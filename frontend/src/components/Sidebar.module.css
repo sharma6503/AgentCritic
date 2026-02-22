@@ -1,0 +1,283 @@
+.toggle {
+    position: fixed;
+    top: 2rem;
+    left: 1.5rem;
+    z-index: 250;
+    width: 44px;
+    height: 44px;
+    background: rgba(17, 24, 39, 0.4);
+    border: 1px solid var(--border);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.toggle:hover {
+    color: var(--text-primary);
+    border-color: var(--border-bright);
+    background: rgba(17, 24, 39, 0.6);
+}
+
+.toggleOpen {
+    left: calc(280px + 1.5rem);
+}
+
+.panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    border-radius: 0;
+    border-left: none;
+    background: rgba(3, 7, 18, 0.9);
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    margin-top: 4.5rem;
+}
+
+.logoCircle {
+    width: 32px;
+    height: 32px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--blue-400);
+}
+
+.panelTitle {
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+}
+
+.userBox {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.userLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.userRow {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.userInput {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.75rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.userInput:focus {
+    border-color: var(--blue-500);
+}
+
+.switchBtn {
+    background: var(--blue-600);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: filter var(--transition);
+}
+
+.switchBtn:hover {
+    filter: brightness(1.2);
+}
+
+.newBtn {
+    width: 100%;
+    margin-bottom: 2rem;
+    padding: 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px dashed var(--blue-500);
+    border-radius: var(--radius);
+    color: var(--blue-400);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all var(--transition);
+}
+
+.newBtn:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-style: solid;
+    color: var(--blue-300);
+}
+
+.listLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+}
+
+.list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-right: 0.5rem;
+}
+
+.list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.item {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-bright);
+}
+
+.itemActive {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border-color: var(--blue-500) !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+.itemMain {
+    margin-bottom: 0.5rem;
+}
+
+.itemName {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.itemPreview {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.itemFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.itemTime {
+    font-size: 0.7rem;
+    color: #475569;
+}
+
+.itemActions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.itemActions button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.2rem;
+    border-radius: 4px;
+    transition: all var(--transition);
+}
+
+.itemActions button:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.itemActions button.del:hover {
+    color: var(--red);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.renameInput {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--blue-500);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    padding: 0.2rem 0;
+    outline: none;
+}
+
+.empty {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    padding: 2rem 0;
+}
+
+.footer {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}

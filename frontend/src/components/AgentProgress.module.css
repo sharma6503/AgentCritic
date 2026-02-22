@@ -1,0 +1,106 @@
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--blue-200);
+    border-left: 3px solid var(--blue-500);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated shimmer background */
+.bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(59, 130, 246, 0.06) 50%,
+            transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    from {
+        background-position: 200% 0;
+    }
+
+    to {
+        background-position: -200% 0;
+    }
+}
+
+/* Tiny progress track */
+.track {
+    width: 60px;
+    height: 3px;
+    background: var(--blue-100);
+    border-radius: 2px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue-500), var(--cyan-500));
+    border-radius: 2px;
+    animation: indeterminate 1.4s ease-in-out infinite;
+    transform-origin: left;
+}
+
+@keyframes indeterminate {
+    0% {
+        transform: translateX(-100%) scaleX(0.4);
+    }
+
+    50% {
+        transform: translateX(50%) scaleX(0.6);
+    }
+
+    100% {
+        transform: translateX(200%) scaleX(0.4);
+    }
+}
+
+.spinner {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--blue-100);
+    border-top-color: var(--blue-500);
+    border-radius: 50%;
+    animation: spin 0.65s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--blue-700);
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

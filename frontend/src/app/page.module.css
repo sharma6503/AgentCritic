@@ -1,0 +1,142 @@
+.page {
+    min-height: 100vh;
+    background: var(--bg);
+    transition: padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    /* Prevent horizontal scroll during shifts */
+}
+
+.pageShifted {
+    padding-left: 280px;
+}
+
+.main {
+    max-width: 1200px;
+    /* Balanced for sidebar + content screens */
+    margin: 0 auto;
+    padding: 2rem 2.5rem 6rem;
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.inputSection {
+    margin-bottom: 2.5rem;
+}
+
+.statusWrap {
+    margin-bottom: 2rem;
+}
+
+.errorBanner {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    color: var(--red);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.outputGrid {
+    display: flex;
+    flex-wrap: wrap;
+    /* Fallback for very small screens */
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    align-items: start;
+    min-width: 0;
+}
+
+/* When metrics are present, we use the two-column layout */
+.outputGridHasMetrics {
+    grid-template-columns: 320px minmax(0, 1fr);
+}
+
+.metricsCol {
+    position: sticky;
+    top: 5rem;
+}
+
+.appFooter {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 0;
+    background: rgba(3, 7, 18, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+.footerInner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.footerLeft {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pulseZap {
+    color: var(--blue-400);
+    animation: pulse-cyan 3s infinite;
+}
+
+.footerRight {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.statusDot {
+    width: 6px;
+    height: 6px;
+    background: var(--cyan-500);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--cyan-400);
+}
+
+@media (max-width: 1024px) {
+    .outputGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .metricsCol {
+        position: static;
+        order: 2;
+    }
+
+    .reportCol {
+        order: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .pageShifted {
+        padding-left: 0;
+    }
+
+    .main {
+        padding: 1.5rem 1rem 4rem;
+    }
+
+    .footerInner {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+}
