@@ -25,7 +25,10 @@ export default function Sidebar({
     const [userInput, setUserInput] = useState(userId || 'default');
     const [editId, setEditId] = useState(null);
     const [editName, setEditName] = useState('');
+    const [mounted, setMounted] = useState(false);
     const editRef = useRef(null);
+
+    useEffect(() => { setMounted(true); }, []);
 
     const refresh = useCallback(async (uid) => {
         if (!uid) return;
@@ -136,7 +139,7 @@ export default function Sidebar({
                                     placeholder="user id…"
                                     suppressHydrationWarning
                                 />
-                                <button className={styles.switchBtn} onClick={applyUserSwitch}>
+                                <button className={styles.switchBtn} onClick={applyUserSwitch} suppressHydrationWarning>
                                     <ArrowRight size={16} />
                                 </button>
                             </div>
@@ -186,10 +189,10 @@ export default function Sidebar({
                                                 <div className={styles.itemPreview}>{s.preview}</div>
                                             </div>
                                             <div className={styles.itemFooter}>
-                                                <span className={styles.itemTime}>{timeAgo(s.updated_at)}</span>
+                                                <span className={styles.itemTime}>{mounted ? timeAgo(s.updated_at) : ''}</span>
                                                 <div className={styles.itemActions}>
-                                                    <button onClick={e => startRename(e, s)}><Edit2 size={12} /></button>
-                                                    <button onClick={e => handleDelete(e, s.id)} className={styles.del}><Trash2 size={12} /></button>
+                                                    <button onClick={e => startRename(e, s)} suppressHydrationWarning><Edit2 size={12} /></button>
+                                                    <button onClick={e => handleDelete(e, s.id)} className={styles.del} suppressHydrationWarning><Trash2 size={12} /></button>
                                                 </div>
                                             </div>
                                         </>

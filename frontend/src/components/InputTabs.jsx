@@ -153,6 +153,7 @@ export default function InputTabs({ activeSessionId, isRunning, onUrlReview, onZ
                                             setFile(null);
                                             if (fileRef.current) fileRef.current.value = '';
                                         }}
+                                        suppressHydrationWarning
                                     >
                                         <X size={16} />
                                     </button>

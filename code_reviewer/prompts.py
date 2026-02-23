@@ -56,7 +56,7 @@ Output EXACTLY this structure (no additional commentary):
 ADK_EXPERT_PROMPT = """ADK Architecture Expert. Review the codebase below for ADK patterns ONLY (not style/security).
 
 <CODEBASE>
-{raw_codebase}
+{code_logic}
 </CODEBASE>
 
 Output EXACTLY:
@@ -88,7 +88,7 @@ If no issues found in a row, write "None found" in the findings table.
 QUALITY_EXPERT_PROMPT = """Code Quality Expert. Review the codebase below for PEP 8, type hints, docs, error handling, tests, and modularity ONLY.
 
 <CODEBASE>
-{raw_codebase}
+{code_logic}
 </CODEBASE>
 
 Output EXACTLY:
@@ -113,9 +113,13 @@ Top 3 highest-impact, easiest-to-fix items as bullet points.
 # ---------------------------------------------------------------------------
 SECURITY_EXPERT_PROMPT = """Security & Deployment Expert. Review the codebase below for secrets, input validation, dependency issues, and cloud readiness ONLY.
 
-<CODEBASE>
-{raw_codebase}
-</CODEBASE>
+<CODEBASE_LOGIC>
+{code_logic}
+</CODEBASE_LOGIC>
+
+<CODEBASE_CONFIG>
+{code_config}
+</CODEBASE_CONFIG>
 
 Output EXACTLY:
 
@@ -144,7 +148,7 @@ CODE_VALIDATOR_PROMPT = """Code Validator. Use sandbox to test snippets from the
 Test max 5 snippets (imports, pure functions). Use `google.adk` not `google.alk`.
 
 <CODEBASE>
-{raw_codebase}
+{code_logic}
 </CODEBASE>
 
 Output EXACTLY:

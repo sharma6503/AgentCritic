@@ -1,11 +1,7 @@
-"""
-File upload / paste tool for local code ingestion.
-Used when the user provides a local file path or pastes code directly.
-"""
-
 import os
 import zipfile
 import tempfile
+import concurrent.futures
 from pathlib import Path
 
 # File extensions we care about for code review
@@ -17,123 +13,116 @@ CODE_EXTENSIONS = {
 }
 
 MAX_FILE_SIZE_BYTES = 500_000  # 500 KB per file
+MAX_WORKERS = 8
 
 
 def parse_uploaded_files(file_paths: list) -> dict:
     """
     Reads and consolidates source code from a list of local file paths or a ZIP archive.
-
-    Accepts individual .py/.ts/.js files or a path to a .zip archive containing
-    a project. Binary files, node_modules, __pycache__, and .git directories are
-    automatically skipped.
-
-    Args:
-        file_paths: A list of absolute or relative file system paths. Can include:
-                    - Individual source files (e.g. ["/tmp/agent.py"])
-                    - A ZIP archive path (e.g. ["/tmp/my_project.zip"])
+    Uses ThreadPoolExecutor for parallel I/O to optimize multi-file ingestion.
 
     Returns:
         A dict with:
           - "status": "success" or "error"
           - "codebase": Formatted string with directory structure + file contents.
+          - "summary": List of files found by category (logic, config, docs).
           - "file_count": Number of files successfully read.
-          - "skipped": List of skipped files and reasons.
     """
     if not file_paths:
-        return {
-            "status": "error",
-            "codebase": "",
-            "file_count": 0,
-            "skipped": ["No file paths provided."],
-        }
+        return {"status": "error", "codebase": "", "file_count": 0, "skipped": ["No file paths provided."]}
 
     collected_files: dict[str, str] = {}
     skipped: list[str] = []
-    temp_dirs: list[str] = []
+    all_eligible_paths: list[tuple[Path, str]] = []  # (absolute_path, relative_display_name)
 
     try:
         for path_str in file_paths:
             path = Path(path_str)
-
             if not path.exists():
-                skipped.append(f"{path_str}: File not found")
+                skipped.append(f"{path_str}: Not found")
                 continue
 
             if path.suffix.lower() == ".zip":
-                # Extract zip to temp dir
-                tmp = tempfile.mkdtemp()
-                temp_dirs.append(tmp)
+                tmp = tempfile.mkdtemp(prefix="adk_zip_")
                 with zipfile.ZipFile(path, "r") as zf:
                     zf.extractall(tmp)
-                _collect_from_directory(Path(tmp), collected_files, skipped)
+                _gather_paths(Path(tmp), all_eligible_paths, skipped)
             elif path.is_dir():
-                _collect_from_directory(path, collected_files, skipped)
+                _gather_paths(path, all_eligible_paths, skipped)
             else:
-                _read_single_file(path, str(path), collected_files, skipped)
+                _gather_paths(path, all_eligible_paths, skipped, single_file=True)
 
-        if not collected_files:
-            return {
-                "status": "error",
-                "codebase": "No readable source files found.",
-                "file_count": 0,
-                "skipped": skipped,
+        if not all_eligible_paths:
+            return {"status": "error", "codebase": "No readable source files found.", "file_count": 0}
+
+        # Parallel Read
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            future_to_name = {
+                executor.submit(_read_file_safe, p, name): name 
+                for p, name in all_eligible_paths
             }
+            for future in concurrent.futures.as_completed(future_to_name):
+                name = future_to_name[future]
+                try:
+                    content = future.result()
+                    if content:
+                        collected_files[name] = content
+                except Exception as e:
+                    skipped.append(f"{name}: Read error - {e}")
+
+        # Organize by category for experts
+        categories = {"logic": [], "config": [], "docs": [], "other": []}
+        for fname in collected_files.keys():
+            ext = Path(fname).suffix.lower()
+            if ext in {".py", ".ts", ".js", ".go", ".java"}: categories["logic"].append(fname)
+            elif ext in {".yaml", ".yml", ".toml", ".json", ".env.example"}: categories["config"].append(fname)
+            elif ext in {".md", ".txt"}: categories["docs"].append(fname)
+            else: categories["other"].append(fname)
 
         # Format output
-        lines = ["=== UPLOADED FILES ===\n"]
-        lines.append("=== DIRECTORY STRUCTURE ===")
-        for fname in sorted(collected_files.keys()):
-            lines.append(f"  {fname}")
+        lines = ["=== DIRECTORY STRUCTURE ==="]
+        for cat, files in categories.items():
+            if files:
+                lines.append(f"  [{cat.upper()}]")
+                for f in sorted(files): lines.append(f"    {f}")
+        
         lines.append("\n=== FILE CONTENTS ===")
         for fname, content in sorted(collected_files.items()):
-            lines.append(f"\n--- {fname} ---")
-            lines.append(content)
+            lines.append(f"\n--- {fname} ---\n{content}")
 
         return {
             "status": "success",
             "codebase": "\n".join(lines),
+            "summary": categories,
             "file_count": len(collected_files),
             "skipped": skipped,
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "codebase": f"Error processing files: {str(e)}",
-            "file_count": 0,
-            "skipped": skipped,
-        }
+        return {"status": "error", "codebase": f"Processing error: {e}", "file_count": 0}
 
 
-def _collect_from_directory(root: Path, collected: dict, skipped: list) -> None:
-    """Recursively walks a directory and collects source files."""
-    SKIP_DIRS = {
-        "node_modules", "__pycache__", ".git", ".venv", "venv",
-        ".mypy_cache", ".pytest_cache", "dist", "build", ".next",
-    }
+def _gather_paths(root: Path, path_list: list, skipped: list, single_file=False) -> None:
+    SKIP_DIRS = {"node_modules", "__pycache__", ".git", ".venv", "venv", ".next", "dist", "build"}
+    
+    def is_eligible(p: Path):
+        if p.suffix.lower() not in CODE_EXTENSIONS and p.name not in {"Dockerfile", "Makefile"}:
+            return False
+        if p.stat().st_size > MAX_FILE_SIZE_BYTES:
+            skipped.append(f"{p.name}: too large")
+            return False
+        return True
+
+    if single_file:
+        if is_eligible(root): path_list.append((root, root.name))
+        return
+
     for item in root.rglob("*"):
-        if item.is_dir():
-            continue
-        # Skip directories in path
-        if any(part in SKIP_DIRS for part in item.parts):
-            continue
-        rel_path = str(item.relative_to(root))
-        _read_single_file(item, rel_path, collected, skipped)
+        if item.is_file() and not any(part in SKIP_DIRS for part in item.parts) and is_eligible(item):
+            path_list.append((item, str(item.relative_to(root))))
 
 
-def _read_single_file(path: Path, display_name: str, collected: dict, skipped: list) -> None:
-    """Reads a single file and adds to collected dict."""
-    if path.suffix.lower() not in CODE_EXTENSIONS and path.name not in {
-        "Dockerfile", "Makefile", ".gitignore",
-    }:
-        skipped.append(f"{display_name}: non-code extension skipped")
-        return
-
-    if path.stat().st_size > MAX_FILE_SIZE_BYTES:
-        skipped.append(f"{display_name}: file too large (>{MAX_FILE_SIZE_BYTES // 1024}KB)")
-        return
-
+def _read_file_safe(path: Path, name: str) -> str:
     try:
-        content = path.read_text(encoding="utf-8", errors="replace")
-        collected[display_name] = content
-    except Exception as e:
-        skipped.append(f"{display_name}: read error — {e}")
+        return path.read_text(encoding="utf-8", errors="replace")
+    except:
+        return ""

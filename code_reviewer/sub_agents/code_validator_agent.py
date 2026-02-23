@@ -4,6 +4,7 @@ Code Validator Agent — uses fast model.
 """
 
 from google.adk import Agent
+from google.adk.planners.plan_re_act_planner import PlanReActPlanner
 from google.adk.code_executors import BuiltInCodeExecutor
 from ..config import Config
 from ..prompts import CODE_VALIDATOR_PROMPT
@@ -16,6 +17,7 @@ code_validator_agent = Agent(
     description="Validates code by executing snippets in a sandbox.",
     instruction=CODE_VALIDATOR_PROMPT,
     code_executor=BuiltInCodeExecutor(),
+    planner=PlanReActPlanner(),
     output_key="validation_result",
     generate_content_config=_cfg.safety_config,
 )

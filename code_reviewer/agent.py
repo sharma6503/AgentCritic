@@ -59,8 +59,12 @@ class _McpTimeoutFilter(logging.Filter):
         return True  # always keep (just downgrade)
 
 
-_mcp_logger = logging.getLogger("google.adk.tools.mcp_tool.mcp_toolset")
-_mcp_logger.addFilter(_McpTimeoutFilter())
+_mcp_loggers = [
+    logging.getLogger("google.adk.tools.mcp_tool.mcp_toolset"),
+    logging.getLogger("google_adk.google.adk.tools.mcp_tool.mcp_toolset"),
+]
+for logger in _mcp_loggers:
+    logger.addFilter(_McpTimeoutFilter())
 
 # Best Practice: Perform platform-specific adjustments early and transparently
 setup_platform_compat()
@@ -71,6 +75,7 @@ load_dotenv()  # Load .env before any agent/MCP initialisation
 # Use the `Agent` shorthand (alias for LlmAgent) — same as all google/adk-samples
 from google.adk import Agent  # noqa: E402
 from google.adk.agents import SequentialAgent, ParallelAgent  # noqa: E402
+from google.adk.planners.plan_re_act_planner import PlanReActPlanner  # noqa: E402
 
 from .config import Config  # noqa: E402
 from .prompts import SUPERVISOR_PROMPT  # noqa: E402
@@ -155,5 +160,6 @@ root_agent = Agent(
     ),
     instruction=SUPERVISOR_PROMPT,
     sub_agents=[review_pipeline],
+    planner=PlanReActPlanner(),
     generate_content_config=configs.safety_config,
 )

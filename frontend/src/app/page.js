@@ -192,9 +192,16 @@ export default function HomePage() {
                             updateSession(finalSid, { error: evt.message });
                         }
                         if (evt.type === 'agent_log') {
-                            updateSession(finalSid, current => ({
-                                agentLogs: [...current.agentLogs, evt.data]
-                            }));
+                            updateSession(finalSid, current => {
+                                const logs = [...(current.agentLogs || [])];
+                                const existingIdx = logs.findIndex(l => l.author === evt.data.author);
+                                if (existingIdx > -1) {
+                                    logs[existingIdx] = { ...logs[existingIdx], text: evt.data.text };
+                                } else {
+                                    logs.push(evt.data);
+                                }
+                                return { agentLogs: logs };
+                            });
                         }
                         if (evt.type === 'done') {
                             updateSession(finalSid, { progress: '' });
