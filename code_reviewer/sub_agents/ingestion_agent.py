@@ -40,7 +40,10 @@ if _uv_path or _npx_path:
         _bb_args = ["--from", "@modelcontextprotocol/server-atlassian", "atlassian-mcp-server"] if _uv_path else ["-y", "@modelcontextprotocol/server-atlassian"]
 
         _github_token = os.environ.get("GITHUB_TOKEN", "")
-        _github_env = {"GITHUB_PERSONAL_ACCESS_TOKEN": _github_token} if _github_token else {}
+        _github_env = {
+            "GITHUB_PERSONAL_ACCESS_TOKEN": _github_token,
+            "GITHUB_TOOLSETS": "repos,contents,search"
+        } if _github_token else {}
 
         _github_mcp = SafeMcpToolset(McpToolset(
             connection_params=StdioConnectionParams(
@@ -50,7 +53,7 @@ if _uv_path or _npx_path:
                     env=_github_env if _github_env else None,
                 ),
             ),
-            tool_filter=["get_file_contents", "list_directory_contents", "search_repositories"],
+            tool_filter=None,  # Allow all tools (get_repository, search_code, etc.)
         ))
 
         if _bb_user and _bb_pass:
@@ -178,6 +181,15 @@ def split_codebase_callback(callback_context: CallbackContext):
     for fname, block in py_files.items():
         in_degree[fname] += 0 # Ensure node exists in degree map
         source = block.split(f"--- {fname} ---")[1] if f"--- {fname} ---" in block else block
+        
+        # Strip markdown fences if present to avoid SyntaxError during AST parsing
+        source_lines = source.strip().splitlines()
+        if source_lines and source_lines[0].startswith("```"):
+            source_lines = source_lines[1:]
+        if source_lines and source_lines[-1].startswith("```"):
+            source_lines = source_lines[:-1]
+        source = "\n".join(source_lines)
+
         try:
             tree = ast.parse(source)
             for node in ast.walk(tree):

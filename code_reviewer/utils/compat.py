@@ -58,8 +58,8 @@ if _ADK_AVAILABLE:
             try:
                 return await self._toolset.get_tools(context)
             except Exception as e:
-                # Suppress noisy traceback/timeout logs on Windows; only log at debug level
-                logger.debug(f"SafeMcpToolset connection skipped: {e}")
+                # Log as info so the user/developer can see why tools are missing on Windows
+                logger.info(f"SafeMcpToolset: Could not load tools from {self._toolset.connection_params.server_params.command}. Error: {e}")
                 return []
 
         async def get_tools_with_prefix(self, context: Any) -> List[Any]:

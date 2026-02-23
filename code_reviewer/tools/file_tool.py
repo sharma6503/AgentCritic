@@ -111,7 +111,12 @@ def parse_uploaded_files(file_paths: list) -> dict:
         
         lines.append("\n=== FILE CONTENTS ===")
         for fname, content in sorted(collected_files.items()):
-            lines.append(f"\n--- {fname} ---\n{content}")
+            ext = Path(fname).suffix.lstrip('.') or ""
+            # Map common extensions to markdown languages
+            lang_map = {"py": "python", "js": "javascript", "ts": "typescript", "yml": "yaml", "yaml": "yaml"}
+            lang = lang_map.get(ext.lower(), ext.lower())
+            
+            lines.append(f"\n--- {fname} ---\n```{lang}\n{content}\n```")
 
         return {
             "status": "success",

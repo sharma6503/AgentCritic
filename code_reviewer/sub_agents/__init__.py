@@ -7,6 +7,7 @@ from .code_validator_agent import code_validator_agent
 from .critic_agent import critic_agent
 from .reviser_agent import reviser_agent
 from .metrics_agent import metrics_agent
+from .html_agent import html_agent
 
 __all__ = [
     "ingestion_agent",
@@ -15,8 +16,6 @@ __all__ = [
     "security_expert",
     "synthesis_agent",
     "code_validator_agent",
-    "critic_agent",
-    "reviser_agent",
     "metrics_agent",
+    "html_agent",
 ]
-

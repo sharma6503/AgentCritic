@@ -11,20 +11,20 @@ Architecture:
           │     ├── quality_expert          → state['quality_review_result']
           │     ├── security_expert         → state['security_review_result']
           │     └── code_validator_agent    → state['validation_result']
-          ├── synthesis_agent               ← Combines all 4 results → draft report
-          ├── critic_agent                  ← Fact-checks draft against raw_codebase
-          └── reviser_agent                 ← Applies critic's findings → final report
+          └── reporting_fleet (ParallelAgent)
+                ├── synthesis_agent         ← Combines all 4 results → synthesis_result
+                └── metrics_agent           ← Extracts JSON from report → review_metrics
 
 Shared State Flow:
   user_request  ──────────────────────────────────► ingestion_agent
   raw_codebase  ──► [adk_expert, quality_expert, security_expert, code_validator] (parallel)
   review results ─────────────────────────────────► synthesis_agent → synthesis_result
-  synthesis_result + raw_codebase ────────────────► critic_agent   → critic_findings
-  synthesis_result + critic_findings ─────────────► reviser_agent  → final report
+  synthesis_result ───────────────────────────────► metrics_agent → review_metrics
+  synthesis_result ───────────────────────────────► html_agent    → HTML output
 
-Callbacks (adopted from google/adk-samples/customer-service, llm-auditor):
-  - critic_agent:  after_model_callback strips ---END-OF-CRITIQUE--- sentinel
-  - reviser_agent: after_model_callback strips ---END-OF-EDIT---    sentinel
+Callbacks:
+  - ingestion_agent: split_codebase_callback optimizes file context
+  - metrics_agent: parses synthesis_result into JSON
 
 MCP Servers:
   ingestion_agent: @modelcontextprotocol/server-github (npx)
@@ -74,7 +74,7 @@ load_dotenv()  # Load .env before any agent/MCP initialisation
 
 # Use the `Agent` shorthand (alias for LlmAgent) — same as all google/adk-samples
 from google.adk import Agent  # noqa: E402
-from google.adk.agents import SequentialAgent, ParallelAgent  # noqa: E402
+from google.adk.agents import SequentialAgent, ParallelAgent, CallbackContext  # noqa: E402
 from google.adk.planners.plan_re_act_planner import PlanReActPlanner  # noqa: E402
 
 from .config import Config  # noqa: E402
@@ -86,13 +86,38 @@ from .sub_agents import (  # noqa: E402
     security_expert,
     code_validator_agent,
     synthesis_agent,
-    metrics_agent,
     critic_agent,
     reviser_agent,
+    metrics_agent,
+    html_agent,
 )
 
 # Instantiate config — reads from env vars / .env
 configs = Config()
+
+# ---------------------------------------------------------------------------
+# ADK Best Practice: Safety & Compliance Callback
+# ---------------------------------------------------------------------------
+def constitution_callback(context: CallbackContext):
+    """
+    Enforces the 'Code Reviewer Constitution' by injecting it into the state.
+    This ensures all agents stay grounded and compliant.
+    """
+    import os
+    constitution_path = os.path.join(os.path.dirname(__file__), "knowledge_base", "constitution.md")
+    try:
+        if os.path.exists(constitution_path):
+            with open(constitution_path, "r", encoding="utf-8") as f:
+                context.state["constitution"] = f.read()
+                logger.debug("Constitution injected into state.")
+    except Exception as e:
+        logger.warning(f"Could not load constitution: {e}")
+
+    # Mitigation for 429 RESOURCE_EXHAUSTED
+    calls = context.state.get("metadata_agent_calls", 0)
+    context.state["metadata_agent_calls"] = calls + 1
+    if calls > 15:
+        logger.warning(f"Session '{context.session_id}' has exceeded 15 agent calls. Quota risk is high.")
 
 # ---------------------------------------------------------------------------
 # Step 1: The Review Fleet — four experts run concurrently
@@ -112,7 +137,20 @@ review_fleet = ParallelAgent(
 )
 
 # ---------------------------------------------------------------------------
-# Step 2: The Reporting Fleet — concurrently synthesise report and extract metrics
+# Step 2: The Reporting Pipeline — draft → critique → revise
+# ---------------------------------------------------------------------------
+synthesis_pipeline = SequentialAgent(
+    name="synthesis_pipeline",
+    description="Refines the expert findings through a Critique-and-Revision loop.",
+    sub_agents=[
+        synthesis_agent,   # Generates initial draft → synthesis_result
+        critic_agent,      # Fact-checks draft → critic_feedback
+        reviser_agent,     # Final polish → synthesis_result
+    ],
+)
+
+# ---------------------------------------------------------------------------
+# Step 3: The Reporting Fleet — concurrently synthesise report and extract metrics
 # ---------------------------------------------------------------------------
 reporting_fleet = ParallelAgent(
     name="reporting_fleet",
@@ -121,8 +159,8 @@ reporting_fleet = ParallelAgent(
         "maximizing throughput in the final reporting phase."
     ),
     sub_agents=[
-        synthesis_agent,   # Reads 4 expert results → synthesis_result
-        metrics_agent,     # Reads 4 expert results → review_metrics
+        synthesis_pipeline, # Refined synthesis loop
+        metrics_agent,      # Reads expert results → review_metrics
     ],
 )
 
@@ -140,6 +178,7 @@ review_pipeline = SequentialAgent(
         ingestion_agent,   # Writes raw_codebase to state
         review_fleet,      # Reads raw_codebase, writes 4 review results (Parallel)
         reporting_fleet,   # Synthesis & Metrics (Parallel)
+        html_agent,        # Translates synthesis_result to HTML
     ],
 )
 
@@ -152,10 +191,16 @@ root_agent = Agent(
     name="root_agent",
     model=configs.agent_settings.root_model,
     description="ADK Code Reviewer — analyses GitHub, Bitbucket, or uploaded code.",
+    before_agent_callback=constitution_callback,
     global_instruction=(
         "You are the ADK Code Reviewer system. "
         "You produce professional, evidence-based code review reports. "
         "Always be concise, precise, and grounded in actual code evidence. "
+        "Adhere to the following core standards:\n"
+        "- **Quality:** Prioritize maintainability, clear naming, and specific error handling.\n"
+        "- **Security:** Flag hardcoded secrets and potential injection vulnerabilities.\n"
+        "- **Structure:** Ensure all code snippets are properly fenced in markdown.\n"
+        "- **Constitution:** You MUST follow the protocols in: {constitution}\n"
         "Never hallucinate file names, function names, or API calls."
     ),
     instruction=SUPERVISOR_PROMPT,

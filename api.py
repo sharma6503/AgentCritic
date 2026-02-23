@@ -192,6 +192,7 @@ async def _sse_stream(message: str, session_id: str, user_id: str = "default"):
         "metrics_agent":            "📊 Computing analysis metrics…",
         "critic_agent":             "🔍 Fact-checking report…",
         "reviser_agent":            "✏️ Applying revisions…",
+        "html_agent":               "📄 Generating HTML report…",
     }
     seen_agents: set[str] = set()
     agent_buffers: dict[str, str] = {}
@@ -286,6 +287,15 @@ async def _sse_stream(message: str, session_id: str, user_id: str = "default"):
                         yield f"data: {json.dumps({'type': 'metrics', 'data': metrics})}\n\n"
                     except json.JSONDecodeError:
                         pass
+                
+                elif author == "html_agent":
+                    # Clean up markdown fences if the LLM output them despite instructions
+                    if raw.startswith("```html"):
+                        raw = raw[7:]
+                    if raw.endswith("```"):
+                        raw = raw[:-3]
+                    raw = raw.strip()
+                    yield f"data: {json.dumps({'type': 'html_report', 'data': raw})}\n\n"
                     
                 continue  # don't stream anything else for this agent's completion
 

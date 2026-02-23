@@ -8,8 +8,10 @@ GitHub repositories using the REST v3 API via the requests library.
 
 import os
 import base64
-from typing import Optional
-import requests
+import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 _GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 _HEADERS = {
@@ -19,77 +21,70 @@ _HEADERS = {
 if _GITHUB_TOKEN:
     _HEADERS["Authorization"] = f"Bearer {_GITHUB_TOKEN}"
 
-
-def github_get_file_contents(
+async def github_get_file_contents(
     owner: str,
     repo: str,
     path: str,
     ref: str = "HEAD",
 ) -> dict:
-    """Fetch the contents of a single file from a GitHub repository.
+    """Fetch the contents of a single file from a GitHub repository (Async).
 
     Args:
         owner: The GitHub organisation or username (e.g. "google").
         repo: The repository name (e.g. "adk-samples").
-        path: The file path inside the repository (e.g. "agents/hello/agent.py").
-        ref: The branch, tag, or commit SHA to read from. Defaults to "HEAD".
+        path: The file path inside the repository.
+        ref: The branch, tag, commit. Defaults to "HEAD".
 
     Returns:
-        A dict with keys:
-          - "content": decoded file content as a string, or an error message.
-          - "path": the requested path.
-          - "status": "ok" or "error".
+        A dict with keys: "content", "path", "status".
     """
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-    try:
-        resp = requests.get(url, headers=_HEADERS, params={"ref": ref}, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        if data.get("encoding") == "base64":
-            content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
-        else:
-            content = data.get("content", "")
-        return {"status": "ok", "path": path, "content": content}
-    except requests.HTTPError as e:
-        return {"status": "error", "path": path, "content": f"HTTP {e.response.status_code}: {e}"}
-    except Exception as e:
-        return {"status": "error", "path": path, "content": str(e)}
+    async with httpx.AsyncClient(headers=_HEADERS, follow_redirects=True) as client:
+        try:
+            resp = await client.get(url, params={"ref": ref}, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("encoding") == "base64":
+                content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+            else:
+                content = data.get("content", "")
+            return {"status": "ok", "path": path, "content": content}
+        except httpx.HTTPStatusError as e:
+            return {"status": "error", "path": path, "content": f"HTTP {e.response.status_code}: {e}"}
+        except Exception as e:
+            return {"status": "error", "path": path, "content": str(e)}
 
-
-def github_list_directory_contents(
+async def github_list_directory_contents(
     owner: str,
     repo: str,
     path: str = "",
     ref: str = "HEAD",
 ) -> dict:
-    """List files and directories at a path within a GitHub repository.
+    """List files and directories at a path within a GitHub repository (Async).
 
     Args:
         owner: The GitHub organisation or username (e.g. "google").
-        repo: The repository name (e.g. "adk-samples").
-        path: Directory path inside the repo. Empty string means the root.
-        ref: The branch, tag, or commit SHA to read from. Defaults to "HEAD".
+        repo: The repository name.
+        path: Directory path. Empty means root.
+        ref: The branch, tag, commit. Defaults to "HEAD".
 
     Returns:
-        A dict with keys:
-          - "entries": list of {"name": str, "type": "file"|"dir", "path": str}
-          - "status": "ok" or "error".
-          - "message": error message if status is "error".
+        A dict with keys: "entries", "status", "message".
     """
     url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-    try:
-        resp = requests.get(url, headers=_HEADERS, params={"ref": ref}, timeout=15)
-        resp.raise_for_status()
-        items = resp.json()
-        if not isinstance(items, list):
-            # Single file returned — not a directory
-            return {"status": "ok", "entries": [{"name": items["name"], "type": "file", "path": items["path"]}]}
-        entries = [
-            {"name": i["name"], "type": "dir" if i["type"] == "dir" else "file", "path": i["path"]}
-            for i in items
-        ]
-        return {"status": "ok", "entries": entries}
-    except requests.HTTPError as e:
-        return {"status": "error", "entries": [], "message": f"HTTP {e.response.status_code}: {e}"}
-    except Exception as e:
-        return {"status": "error", "entries": [], "message": str(e)}
+    async with httpx.AsyncClient(headers=_HEADERS, follow_redirects=True) as client:
+        try:
+            resp = await client.get(url, params={"ref": ref}, timeout=15)
+            resp.raise_for_status()
+            items = resp.json()
+            if not isinstance(items, list):
+                return {"status": "ok", "entries": [{"name": items["name"], "type": "file", "path": items["path"]}]}
+            entries = [
+                {"name": i["name"], "type": "dir" if i["type"] == "dir" else "file", "path": i["path"]}
+                for i in items
+            ]
+            return {"status": "ok", "entries": entries}
+        except httpx.HTTPStatusError as e:
+            return {"status": "error", "entries": [], "message": f"HTTP {e.response.status_code}: {e}"}
+        except Exception as e:
+            return {"status": "error", "entries": [], "message": str(e)}
