@@ -85,13 +85,31 @@ def split_codebase_callback(callback_context: CallbackContext):
     logger.info(f"split_codebase_callback entering. State keys: {keys}")
     raw = callback_context.state.get("raw_codebase", "")
     
-    # If not found in state, try to see if it was just emitted and we are an after_agent callback
-    # that runs before state update (though usually state update happens first).
-    if not raw:
-        logger.warning("raw_codebase not found in state during callback!")
-        return
+    # === OPTIMIZATION: Bypassing LLM Truncation ===
+    # For large codebases, the LLM will hit MAX_TOKENS and fail to echo the full string.
+    # To fix this, we directly extract the parsed codebase from the ToolResponse history!
+    extracted_raw = None
+    if hasattr(callback_context, "history") and callback_context.history:
+        for msg in reversed(callback_context.history):
+            if not getattr(msg, "parts", None): continue
+            for part in msg.parts:
+                part_name = getattr(getattr(part, "function_response", None), "name", "")
+                if part_name == "parse_uploaded_files":
+                    try:
+                        resp = part.function_response.response
+                        if isinstance(resp, dict):
+                            extracted_raw = resp.get("codebase", "")
+                            if extracted_raw: break
+                    except Exception: pass
+            if extracted_raw: break
+
+    # If we extracted the full text directly from the tool, it overrides the LLM's (potentially truncated/empty) output
+    if extracted_raw:
+        logger.info(f"Successfully bypassed LLM output: extracted {len(extracted_raw)} chars directly from ToolResponse!")
+        raw = extracted_raw
 
     if not isinstance(raw, str) or not raw:
+        logger.warning("raw_codebase not found in state or tool history during callback!")
         return
 
     # Parse collected files into logic, config, docs
@@ -141,9 +159,20 @@ def split_codebase_callback(callback_context: CallbackContext):
     for fname in py_files:
         mod_name = fname.replace("\\", "/").replace(".py", "").replace("/", ".")
         module_to_file[mod_name] = fname
-        # Also store relative name for local imports
-        base_name = os.path.basename(fname).replace(".py", "")
-        module_to_file[base_name] = fname
+        if mod_name.endswith(".__init__"):
+            module_to_file[mod_name[:-9]] = fname
+
+    def _resolve_import(module: str, level: int, current_fname: str) -> str | None:
+        if level == 0:
+            return module_to_file.get(module)
+        parts = current_fname.replace("\\", "/").split("/")
+        parts.pop() # remove file name
+        for _ in range(level - 1):
+            if parts: parts.pop()
+            else: return None
+        base_mod = ".".join(parts)
+        full_mod = f"{base_mod}.{module}" if base_mod and module else base_mod or module
+        return module_to_file.get(full_mod)
 
     # 2. Extract AST imports
     for fname, block in py_files.items():
@@ -154,19 +183,30 @@ def split_codebase_callback(callback_context: CallbackContext):
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        dep_fname = module_to_file.get(alias.name.split('.')[0])
-                        if dep_fname and dep_fname != fname:
+                        dep_fname = _resolve_import(alias.name.split('.')[0], 0, fname)
+                        if dep_fname and dep_fname != fname and fname not in graph[dep_fname]:
                             graph[dep_fname].append(fname)
                             in_degree[fname] += 1
-                elif isinstance(node, ast.ImportFrom) and node.module:
-                    dep_fname = module_to_file.get(node.module.split('.')[0])
-                    if dep_fname and dep_fname != fname:
+                elif isinstance(node, ast.ImportFrom):
+                    level = node.level
+                    module = node.module or ""
+                    dep_fname = _resolve_import(module, level, fname)
+                    
+                    if not dep_fname and node.names:
+                       for alias in node.names:
+                           sub_mod = f"{module}.{alias.name}" if module else alias.name
+                           dep_fname_sub = _resolve_import(sub_mod, level, fname)
+                           if dep_fname_sub and dep_fname_sub != fname and fname not in graph[dep_fname_sub]:
+                                graph[dep_fname_sub].append(fname)
+                                in_degree[fname] += 1
+                                
+                    if dep_fname and dep_fname != fname and fname not in graph[dep_fname]:
                         graph[dep_fname].append(fname)
                         in_degree[fname] += 1
         except SyntaxError:
             pass # Ignore unparseable code snippets
 
-    # 3. Kahn's Algorithm
+    # 3. Kahn's Algorithm with Cycle Resolution
     sorted_py_files = []
     queue = deque([f for f in py_files if in_degree[f] == 0])
 
@@ -178,10 +218,24 @@ def split_codebase_callback(callback_context: CallbackContext):
             if in_degree[dependent] == 0:
                 queue.append(dependent)
 
+    cyclic_files = [f for f in py_files if in_degree[f] > 0]
+    while cyclic_files:
+        target = min(cyclic_files, key=lambda f: in_degree[f])
+        in_degree[target] = 0
+        queue.append(target)
+        
+        while queue:
+            curr = queue.popleft()
+            sorted_py_files.append(curr)
+            for dependent in graph[curr]:
+                if in_degree[dependent] > 0:
+                    in_degree[dependent] -= 1
+                    if in_degree[dependent] == 0:
+                        queue.append(dependent)
+        cyclic_files = [f for f in py_files if in_degree[f] > 0]
+
     # Combine sorted Python files with other logic files (TS, JS, etc.)
     final_logic_parts = [logic_files[f] for f in sorted_py_files]
-    # Add any Python files that had cycles (didn't make it to sorted list)
-    final_logic_parts.extend([logic_files[f] for f in py_files if f not in sorted_py_files])
     # Add non-Python logic files
     final_logic_parts.extend([block for f, block in logic_files.items() if not f.endswith('.py')])
 

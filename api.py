@@ -78,7 +78,7 @@ APP_NAME = "adk_code_reviewer"
 DB_FILE = Path(__file__).parent / "adk_reviewer_sessions.db"
 # Use 4 slashes for absolute Windows paths in SQLAlchemy/aiosqlite
 # and ensure forward slashes are used for the driver.
-DB_PATH = f"sqlite:///{DB_FILE.as_posix()}"
+DB_PATH = f"sqlite+aiosqlite:///{DB_FILE.as_posix()}"
 
 _session_service = None
 
@@ -543,12 +543,8 @@ async def review_url(body: UrlRequest):
                 for chunk in resp.iter_content(chunk_size=8192):
                     f.write(chunk)
                     
-            # Extract
-            extract_dir.mkdir()
-            with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(extract_dir)
-                
-            target_path = str(extract_dir).replace('\\', '/')
+            # No extraction needed: passed directly to in-memory streaming ingestion
+            target_path = str(zip_path).replace('\\', '/')
             message = (
                 f"Please review the uploaded codebase from {url_str}.\n"
                 f"Call parse_uploaded_files with file_paths=['{target_path}'] to read all source files, then perform a full code review."
@@ -601,12 +597,8 @@ async def review_zip(
         await _ensure_session(sid, user_id)
 
         if is_zip:
-            # Extract ZIP → pass directory path to agent
-            extract_dir = Path(tmp_dir) / "extracted"
-            extract_dir.mkdir()
-            with zipfile.ZipFile(file_path, "r") as zf:
-                zf.extractall(extract_dir)
-            target_path = str(extract_dir)
+            # No extraction needed: pass ZIP directly to in-memory streaming agent
+            target_path = str(file_path).replace('\\', '/')
             message = (
                 f"Please review the uploaded codebase.\n"
                 f"Call parse_uploaded_files with file_paths=['{target_path}'] to read all source files, then perform a full code review."

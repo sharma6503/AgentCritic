@@ -15,11 +15,14 @@ CODE_EXTENSIONS = {
 MAX_FILE_SIZE_BYTES = 500_000  # 500 KB per file
 MAX_WORKERS = 8
 
+SKIP_DIRS = {"node_modules", "__pycache__", ".git", ".venv", "venv", ".next", "dist", "build"}
+
 
 def parse_uploaded_files(file_paths: list) -> dict:
     """
     Reads and consolidates source code from a list of local file paths or a ZIP archive.
     Uses ThreadPoolExecutor for parallel I/O to optimize multi-file ingestion.
+    ZIP files are processed entirely in-memory as streams.
 
     Returns:
         A dict with:
@@ -33,7 +36,9 @@ def parse_uploaded_files(file_paths: list) -> dict:
 
     collected_files: dict[str, str] = {}
     skipped: list[str] = []
-    all_eligible_paths: list[tuple[Path, str]] = []  # (absolute_path, relative_display_name)
+    
+    # Each task is a tuple: (callable, (args...), display_name)
+    all_eligible_tasks: list[tuple] = []
 
     try:
         for path_str in file_paths:
@@ -43,23 +48,41 @@ def parse_uploaded_files(file_paths: list) -> dict:
                 continue
 
             if path.suffix.lower() == ".zip":
-                tmp = tempfile.mkdtemp(prefix="adk_zip_")
-                with zipfile.ZipFile(path, "r") as zf:
-                    zf.extractall(tmp)
-                _gather_paths(Path(tmp), all_eligible_paths, skipped)
+                try:
+                    with zipfile.ZipFile(path, "r") as zf:
+                        for name in zf.namelist():
+                            if name.endswith('/'): 
+                                continue # Skip directories
+                                
+                            parts = Path(name).parts
+                            if any(part in SKIP_DIRS for part in parts):
+                                continue
+                                
+                            ext = Path(name).suffix.lower()
+                            if ext not in CODE_EXTENSIONS and Path(name).name not in {"Dockerfile", "Makefile"}:
+                                continue
+                                
+                            info = zf.getinfo(name)
+                            if info.file_size > MAX_FILE_SIZE_BYTES:
+                                skipped.append(f"{name}: too large")
+                                continue
+                                
+                            all_eligible_tasks.append((_read_zip_member_safe, (path, name), name))
+                except zipfile.BadZipFile:
+                    skipped.append(f"{path_str}: Bad ZIP file")
             elif path.is_dir():
-                _gather_paths(path, all_eligible_paths, skipped)
+                _gather_paths(path, all_eligible_tasks, skipped)
             else:
-                _gather_paths(path, all_eligible_paths, skipped, single_file=True)
+                _gather_paths(path, all_eligible_tasks, skipped, single_file=True)
 
-        if not all_eligible_paths:
+        if not all_eligible_tasks:
             return {"status": "error", "codebase": "No readable source files found.", "file_count": 0}
 
         # Parallel Read
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future_to_name = {
-                executor.submit(_read_file_safe, p, name): name 
-                for p, name in all_eligible_paths
+                executor.submit(func, *args): name 
+                for func, args, name in all_eligible_tasks
             }
             for future in concurrent.futures.as_completed(future_to_name):
                 name = future_to_name[future]
@@ -101,9 +124,7 @@ def parse_uploaded_files(file_paths: list) -> dict:
         return {"status": "error", "codebase": f"Processing error: {e}", "file_count": 0}
 
 
-def _gather_paths(root: Path, path_list: list, skipped: list, single_file=False) -> None:
-    SKIP_DIRS = {"node_modules", "__pycache__", ".git", ".venv", "venv", ".next", "dist", "build"}
-    
+def _gather_paths(root: Path, task_list: list, skipped: list, single_file=False) -> None:
     def is_eligible(p: Path):
         if p.suffix.lower() not in CODE_EXTENSIONS and p.name not in {"Dockerfile", "Makefile"}:
             return False
@@ -113,16 +134,29 @@ def _gather_paths(root: Path, path_list: list, skipped: list, single_file=False)
         return True
 
     if single_file:
-        if is_eligible(root): path_list.append((root, root.name))
+        if is_eligible(root): task_list.append((_read_file_safe, (root,), root.name))
         return
 
     for item in root.rglob("*"):
         if item.is_file() and not any(part in SKIP_DIRS for part in item.parts) and is_eligible(item):
-            path_list.append((item, str(item.relative_to(root))))
+            task_list.append((_read_file_safe, (item,), str(item.relative_to(root))))
 
 
-def _read_file_safe(path: Path, name: str) -> str:
+def _read_file_safe(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8", errors="replace")
     except:
+        return ""
+
+
+def _read_zip_member_safe(zip_path: Path, member_name: str) -> str:
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            with zf.open(member_name) as f:
+                # Read at most MAX_FILE_SIZE_BYTES + 1 to prevent zip bombs
+                data = f.read(MAX_FILE_SIZE_BYTES + 1)
+                if len(data) > MAX_FILE_SIZE_BYTES:
+                    return "" # Omit if it sneakily exceeded the size somehow
+                return data.decode("utf-8", errors="replace")
+    except Exception:
         return ""
