@@ -26,11 +26,14 @@ async def generate_and_save_html_callback(callback_context):
     if title_match:
         dynamic_title = title_match.group(1).strip()
 
-    # 1. Convert Markdown to raw HTML body
+    # 1. Cleanse aggressive HTML tags (like <br>) hallucinated by the LLM
+    cleaned_markdown = synthesis_markdown.replace('<br>', '\n').replace('<br/>', '\n')
+    
+    # 2. Convert Markdown to raw HTML body
     try:
         html_body = markdown.markdown(
-            synthesis_markdown,
-            extensions=['extra', 'codehilite', 'tables', 'fenced_code', 'nl2br']
+            cleaned_markdown,
+            extensions=['extra', 'codehilite', 'tables', 'fenced_code']
         )
     except Exception as e:
         import logging
