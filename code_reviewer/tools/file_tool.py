@@ -2,14 +2,18 @@ import os
 import zipfile
 import tempfile
 import concurrent.futures
+import shutil
 from pathlib import Path
+from google.adk.tools.tool_context import ToolContext
 
 # File extensions we care about for code review
 CODE_EXTENSIONS = {
-    ".py", ".ts", ".js", ".go", ".java",
-    ".yaml", ".yml", ".toml", ".json",
+    ".py", ".ts", ".js", ".go", ".java", ".cpp", ".c", ".h", ".hpp",
+    ".cs", ".rs", ".rb", ".php", ".swift", ".kt", ".kts", ".m", ".scala",
+    ".yaml", ".yml", ".toml", ".json", ".xml",
+    ".html", ".css", ".scss", ".sass", ".less",
     ".md", ".txt", ".env.example", ".dockerfile",
-    ".tf",  # Terraform
+    ".tf", ".sh", ".bash", ".zsh",
 }
 
 MAX_FILE_SIZE_BYTES = 500_000  # 500 KB per file
@@ -18,11 +22,12 @@ MAX_WORKERS = 8
 SKIP_DIRS = {"node_modules", "__pycache__", ".git", ".venv", "venv", ".next", "dist", "build"}
 
 
-def parse_uploaded_files(file_paths: list) -> dict:
+def parse_uploaded_files(file_paths: list, tool_context: ToolContext = None) -> dict:
     """
     Reads and consolidates source code from a list of local file paths or a ZIP archive.
     Uses ThreadPoolExecutor for parallel I/O to optimize multi-file ingestion.
-    ZIP files are processed entirely in-memory as streams.
+    ZIP files are processed entirely in-memory as streams, but also physically 
+    extracted to a session-specific ADK artifact directory if possible.
 
     Returns:
         A dict with:
@@ -48,6 +53,15 @@ def parse_uploaded_files(file_paths: list) -> dict:
                 continue
 
             if path.suffix.lower() == ".zip":
+                # Extract physically for expert agents to use
+                if tool_context and getattr(tool_context, 'session_id', None):
+                    # We create the physical directory at .adk/artifacts/{session_id}/source
+                    artifact_dir = Path.cwd() / ".adk" / "artifacts" / tool_context.session_id / "source"
+                    artifact_dir.mkdir(parents=True, exist_ok=True)
+                    _unzip_to_target(path, artifact_dir, skipped)
+                    # Pass the directory path into the state so experts know where it is
+                    tool_context.state["source_artifact_path"] = str(artifact_dir.absolute())
+
                 try:
                     with zipfile.ZipFile(path, "r") as zf:
                         for name in zf.namelist():
@@ -165,3 +179,35 @@ def _read_zip_member_safe(zip_path: Path, member_name: str) -> str:
                 return data.decode("utf-8", errors="replace")
     except Exception:
         return ""
+
+
+def _unzip_to_target(zip_path: Path, target_dir: Path, skipped: list):
+    """Physically extracts eligible code files from a ZIP archive to a given target directory."""
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for name in zf.namelist():
+                if name.endswith('/'): continue
+                
+                parts = Path(name).parts
+                if any(part in SKIP_DIRS for part in parts): continue
+                
+                ext = Path(name).suffix.lower()
+                if ext not in CODE_EXTENSIONS and Path(name).name not in {"Dockerfile", "Makefile"}:
+                    continue
+                    
+                info = zf.getinfo(name)
+                if info.file_size > MAX_FILE_SIZE_BYTES:
+                    skipped.append(f"{name}: too large to extract to physical artifact")
+                    continue
+                    
+                try:
+                    source_file = zf.open(name)
+                    target_path = target_dir / name
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(target_path, "wb") as output_file:
+                        shutil.copyfileobj(source_file, output_file)
+                except Exception as e:
+                    skipped.append(f"{name}: error extracting - {e}")
+    except Exception as e:
+        skipped.append(f"Failed to unzip {zip_path.name}: {e}")
+

@@ -1,8 +1,8 @@
 """Synthesis Agent — uses quality model for the final report draft."""
 
 from google.adk import Agent
-from ..config import Config
-from ..prompts import SYNTHESIS_PROMPT
+from code_reviewer.config import Config
+from code_reviewer.prompts import SYNTHESIS_PROMPT
 
 _cfg = Config()
 

@@ -5,9 +5,10 @@ import logging
 from google.adk import Agent
 from google.adk.planners.plan_re_act_planner import PlanReActPlanner
 from google.adk.agents.callback_context import CallbackContext
-from ..config import Config
-from ..prompts import INGESTION_PROMPT
-from ..tools import (
+from google.genai import types
+from code_reviewer.config import Config
+from code_reviewer.prompts import INGESTION_PROMPT
+from code_reviewer.tools import (
     parse_uploaded_files,
     github_get_file_contents,
     github_list_directory_contents,
@@ -87,6 +88,11 @@ def split_codebase_callback(callback_context: CallbackContext):
     keys = list(callback_context.state.keys()) if isinstance(callback_context.state, dict) else list(callback_context.state.to_dict().keys())
     logger.info(f"split_codebase_callback entering. State keys: {keys}")
     raw = callback_context.state.get("raw_codebase", "")
+    
+    # Ensure source_artifact_path exists so that expert prompts don't hit a KeyError
+    # if it wasn't set by file_tool.py (e.g. during GitHub remote ingestion)
+    if "source_artifact_path" not in callback_context.state:
+        callback_context.state["source_artifact_path"] = "Not available (no physical archive processed)"
     
     # === OPTIMIZATION: Bypassing LLM Truncation ===
     # For large codebases, the LLM will hit MAX_TOKENS and fail to echo the full string.
@@ -254,6 +260,28 @@ def split_codebase_callback(callback_context: CallbackContext):
     callback_context.state["code_logic"] = "\n".join(final_logic_parts) if final_logic_parts else raw
     callback_context.state["code_config"] = "\n".join(config_parts) if config_parts else ""
     callback_context.state["code_docs"] = "\n".join(docs_parts) if docs_parts else ""
+    
+    # === ARTIFACT STORAGE: Source Snapshot ===
+    # Following ADK best practices for persistent context retrieval.
+    try:
+        import asyncio
+        snapshot_content = f"# Source Snapshot\n\nGenerated during ingestion phase.\n\n{raw}"
+        artifact = types.Part(
+            inline_data=types.Blob(
+                data=snapshot_content.encode("utf-8"),
+                mime_type="text/markdown"
+            )
+        )
+        # Use asyncio to run the async save_artifact if called from a sync context
+        # (ADK callbacks can be either sync or async depending on the runtime)
+        if asyncio.iscoroutinefunction(callback_context.save_artifact):
+            asyncio.create_task(callback_context.save_artifact(filename="source_snapshot.md", artifact=artifact))
+        else:
+            callback_context.save_artifact(filename="source_snapshot.md", artifact=artifact)
+        logger.info("Ingestion: Source snapshot artifact saved successfully.")
+    except Exception as e:
+        logger.warning(f"Ingestion: Failed to save snapshot artifact: {e}")
+
     logger.info(f"Optimization: Split codebase into logic ({len(final_logic_parts)} sorted), config ({len(config_parts)}), docs ({len(docs_parts)})")
 
 ingestion_agent = Agent(

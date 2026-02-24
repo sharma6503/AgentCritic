@@ -5,13 +5,15 @@ A powerful, multi-agent AI code review platform built with **Google ADK (Agent D
 ## ✨ Features
 
 - **Multi-Agent Orchestration**: Utilizes a fleet of specialized experts:
-  - **Ingestion Agent**: Fast-paths GitHub repositories, ZIP archives, and pasted code into memory.
+  - **Ingestion Agent**: Fast-paths GitHub repositories, ZIP archives, and pasted code into memory. Now robust against binary edge-cases and empty payloads.
   - **ADK Architecture Expert**: Analyzes system design and architectural patterns.
   - **Quality Expert**: Evaluates code quality, maintainability, and standard practices.
   - **Security Expert**: Identifies vulnerabilities, deployment flaws, and security risks.
   - **Validator Expert**: Runs dynamic code validation checks.
-  - **Synthesis Agent & Reviser**: Compiles the individual expert traces into a comprehensive, finalized Markdown report.
+  - **Synthesis Agent**: Compiles the individual expert traces into a comprehensive, finalized Markdown report.
+  - **HTML Agent**: Automatically converts the synthesis report into an ultra-premium, beautifully animated HTML document (cycling randomly through Cyberpunk, Minimalist, Oceanic, Developer, and Sunset Glass themes).
 - **Background Session Independence**: Switch between past sessions seamlessly while heavy reviews run concurrently in the background without locking up the UI. State persistence is securely handled by SQLite metadata matching.
+- **Context Caching & Resumability**: Leverages ADK `ContextCacheConfig` (min 32k tokens) and `ResumabilityConfig` to dramatically reduce redundant token usage and allow pausing/resumption of the multi-agent pipeline workflow under heavy load.
 - **GitHub Fast-Path Ingestion**: Automatically intercepts GitHub URLs and downloads repositories as zip archives over the GitHub REST API, bypassing slow LLM file-by-file agent fetching for ingestion times measured in seconds rather than minutes.
 - **Live Agent Traces**: Built-in Server-Sent Events (SSE) streaming architecture dynamically pushes intermediate agent logs (traces) to the sleek React frontend in real-time as experts finish their individual evaluations.
 - **FastAPI Backend**: Robust asynchronous event streaming and metadata management natively integrated with the Google ADK `DatabaseSessionService`.

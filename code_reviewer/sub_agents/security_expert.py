@@ -1,8 +1,8 @@
 """Security & Deployment Expert Agent — uses fast model for parallel expert fleet."""
 
 from google.adk import Agent
-from ..config import Config
-from ..prompts import SECURITY_EXPERT_PROMPT
+from code_reviewer.config import Config
+from code_reviewer.prompts import SECURITY_EXPERT_PROMPT
 import pathlib
 import logging
 

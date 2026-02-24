@@ -38,7 +38,12 @@ Built-in Code Tools:
 
 import logging
 from dotenv import load_dotenv
-from .utils.compat import setup_platform_compat
+
+from google.adk.apps.app import App, ResumabilityConfig
+from google.adk.agents.context_cache_config import ContextCacheConfig
+from google.adk.plugins.logging_plugin import LoggingPlugin
+
+from code_reviewer.utils.compat import setup_platform_compat
 
 # ---------------------------------------------------------------------------
 # Silence ADK-internal MCP connection ERRORs at the framework level.
@@ -74,20 +79,19 @@ load_dotenv()  # Load .env before any agent/MCP initialisation
 
 # Use the `Agent` shorthand (alias for LlmAgent) — same as all google/adk-samples
 from google.adk import Agent  # noqa: E402
-from google.adk.agents import SequentialAgent, ParallelAgent, CallbackContext  # noqa: E402
+from google.adk.agents import SequentialAgent, ParallelAgent  # noqa: E402
+from google.adk.agents.callback_context import CallbackContext  # noqa: E402
 from google.adk.planners.plan_re_act_planner import PlanReActPlanner  # noqa: E402
 
-from .config import Config  # noqa: E402
-from .prompts import SUPERVISOR_PROMPT  # noqa: E402
-from .sub_agents import (  # noqa: E402
+from code_reviewer.config import Config  # noqa: E402
+from code_reviewer.prompts import SUPERVISOR_PROMPT  # noqa: E402
+from code_reviewer.sub_agents import (  # noqa: E402
     ingestion_agent,
     adk_expert,
     quality_expert,
     security_expert,
     code_validator_agent,
     synthesis_agent,
-    critic_agent,
-    reviser_agent,
     metrics_agent,
     html_agent,
 )
@@ -98,7 +102,7 @@ configs = Config()
 # ---------------------------------------------------------------------------
 # ADK Best Practice: Safety & Compliance Callback
 # ---------------------------------------------------------------------------
-def constitution_callback(context: CallbackContext):
+def constitution_callback(callback_context: CallbackContext):
     """
     Enforces the 'Code Reviewer Constitution' by injecting it into the state.
     This ensures all agents stay grounded and compliant.
@@ -108,16 +112,86 @@ def constitution_callback(context: CallbackContext):
     try:
         if os.path.exists(constitution_path):
             with open(constitution_path, "r", encoding="utf-8") as f:
-                context.state["constitution"] = f.read()
+                callback_context.state["constitution"] = f.read()
                 logger.debug("Constitution injected into state.")
     except Exception as e:
         logger.warning(f"Could not load constitution: {e}")
 
     # Mitigation for 429 RESOURCE_EXHAUSTED
-    calls = context.state.get("metadata_agent_calls", 0)
-    context.state["metadata_agent_calls"] = calls + 1
+    calls = callback_context.state.get("metadata_agent_calls", 0)
+    callback_context.state["metadata_agent_calls"] = calls + 1
     if calls > 15:
-        logger.warning(f"Session '{context.session_id}' has exceeded 15 agent calls. Quota risk is high.")
+        logger.warning(f"Session '{callback_context.session_id}' has exceeded 15 agent calls. Quota risk is high.")
+
+    # Filter out ZIP file parts from history and current request to prevent Gemini 400 INVALID_ARGUMENT
+    from google.genai import types
+    
+    def _filter_parts(parts):
+        if not parts: return parts
+        filtered = []
+        for part in parts:
+            mime_type = ""
+            if getattr(part, "inline_data", None) and getattr(part.inline_data, "mime_type", None):
+                mime_type = part.inline_data.mime_type
+            elif getattr(part, "file_data", None) and getattr(part.file_data, "mime_type", None):
+                mime_type = part.file_data.mime_type
+            
+            if "zip" in mime_type.lower() or "application/x-zip-compressed" in mime_type.lower():
+                logger.info(f"Filtering unsupported ZIP part (MIME: {mime_type})")
+                
+                # Save the ZIP to disk so the agent can access it using the file tool
+                zip_path_str = ""
+                if getattr(part, "inline_data", None) and part.inline_data.data:
+                    try:
+                        import tempfile
+                        from pathlib import Path
+                        
+                        data_bytes = part.inline_data.data
+                        if isinstance(data_bytes, str):
+                            import base64
+                            data_bytes = base64.b64decode(data_bytes)
+                            
+                        # Save to project artifact directory
+                        upload_dir = Path(".adk/artifacts/uploads")
+                        upload_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        tmp_file = tempfile.NamedTemporaryFile(dir=upload_dir, delete=False, suffix=".zip")
+                        tmp_file.write(data_bytes)
+                        tmp_file.close()
+                        
+                        zip_path_str = str(Path(tmp_file.name).absolute())
+                        logger.info(f"Saved uploaded ZIP to temporary file: {zip_path_str}")
+                    except Exception as e:
+                        logger.error(f"Failed to save intercepted ZIP data: {e}")
+
+                msg = "[System Note: User attached a ZIP file."
+                if zip_path_str:
+                    msg += f" It was temporarily preserved at `{zip_path_str}`. You must use the `parse_uploaded_files` tool with this exact path to extract and read it.]"
+                else:
+                    msg += " No valid data found or failed to save.]"
+                
+                filtered.append(types.Part.from_text(text=msg))
+            else:
+                filtered.append(part)
+        return filtered
+
+    # 1. Filter the invocation trigger content
+    if hasattr(callback_context, "user_content") and callback_context.user_content:
+        if getattr(callback_context.user_content, "parts", None):
+            # Mutate the underlying invocation context directly
+            callback_context._invocation_context.user_content.parts = _filter_parts(callback_context.user_content.parts)
+    
+    # 2. Filter session events (where the prompt history is built from)
+    if hasattr(callback_context, "session") and getattr(callback_context.session, "events", None):
+        for event in callback_context.session.events:
+            if getattr(event, "content", None) and getattr(event.content, "parts", None):
+                event.content.parts = _filter_parts(event.content.parts)
+                
+    # 3. Filter history just in case
+    if hasattr(callback_context, "history") and callback_context.history:
+        for msg in callback_context.history:
+            if getattr(msg, "parts", None):
+                msg.parts = _filter_parts(msg.parts)
 
 # ---------------------------------------------------------------------------
 # Step 1: The Review Fleet — four experts run concurrently
@@ -141,11 +215,9 @@ review_fleet = ParallelAgent(
 # ---------------------------------------------------------------------------
 synthesis_pipeline = SequentialAgent(
     name="synthesis_pipeline",
-    description="Refines the expert findings through a Critique-and-Revision loop.",
+    description="Synthesizes expert findings into a unified Markdown report.",
     sub_agents=[
-        synthesis_agent,   # Generates initial draft → synthesis_result
-        critic_agent,      # Fact-checks draft → critic_feedback
-        reviser_agent,     # Final polish → synthesis_result
+        synthesis_agent,   # Generates unified Markdown report
     ],
 )
 
@@ -207,4 +279,22 @@ root_agent = Agent(
     sub_agents=[review_pipeline],
     planner=PlanReActPlanner(),
     generate_content_config=configs.safety_config,
+)
+
+# ---------------------------------------------------------------------------
+# Step 4: ADK App Configuration — caching, logging, resumability
+# ---------------------------------------------------------------------------
+# Create the app with context caching, resumability, and logging configuration
+app = App(
+    name='code_reviewer',
+    root_agent=root_agent,
+    plugins=[LoggingPlugin()],
+    context_cache_config=ContextCacheConfig(
+        min_tokens=32768, # Cache larger inputs like full repositories
+        ttl_seconds=3600, # Store for up to 1 hour
+        cache_intervals=10, 
+    ),
+    resumability_config=ResumabilityConfig(
+        is_resumable=True
+    ),
 )

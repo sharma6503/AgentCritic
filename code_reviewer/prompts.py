@@ -68,6 +68,9 @@ You MUST output the final collected data in this exact format. If using `parse_u
 # ---------------------------------------------------------------------------
 ADK_EXPERT_PROMPT = """You are the ADK Architecture Expert. Review the code for adherence to Google Agent Development Kit (ADK) best practices.
 
+### Context:
+Physical Source Code Directory: {source_artifact_path}
+
 <CODEBASE>
 {code_logic}
 </CODEBASE>
@@ -102,6 +105,9 @@ A concise evaluation of ADK pattern usage.
 # ---------------------------------------------------------------------------
 QUALITY_EXPERT_PROMPT = """You are the Code Quality Expert. Evaluate the codebase for readability, maintainability, and standard practices (PEP 8, docs, typing).
 
+### Context:
+Physical Source Code Directory: {source_artifact_path}
+
 <CODEBASE>
 {code_logic}
 </CODEBASE>
@@ -131,6 +137,9 @@ Overall quality verdict.
 # Security & Deployment Expert
 # ---------------------------------------------------------------------------
 SECURITY_EXPERT_PROMPT = """You are the Security & Deployment Expert. Audit the codebase for vulnerabilities, leakages, and cloud integration misconfigurations.
+
+### Context:
+Physical Source Code Directory: {source_artifact_path}
 
 <CODEBASE_LOGIC>
 {code_logic}
@@ -169,6 +178,9 @@ Security posture overview.
 # Code Validator Agent
 # ---------------------------------------------------------------------------
 CODE_VALIDATOR_PROMPT = """You are the Code Validation Agent. Your goal is to verify code snippets by executing them in a safe sandbox.
+
+### Context:
+Physical Source Code Directory: {source_artifact_path}
 
 <CODEBASE>
 {code_logic}
@@ -321,29 +333,121 @@ Output the final Markdown report.
 # ---------------------------------------------------------------------------
 # HTML Report Agent
 # ---------------------------------------------------------------------------
+REPORT_THEMES = [
+    """
+### Design System & Theme: Neon Cyberpunk
+- **Font:** 'Orbitron' or 'Roboto Mono' (Google Fonts).
+- **Theme:** Ultra-dark mode (`#050510`) with glowing glassmorphism and CRT/glitch subtle effects.
+- **Layout:** Centered content with a floating, sticky sidebar navigation.
+- **Background:** Deep black with faint neon grid lines or matrix-like subtle animated mesh.
+- **Animations:** 
+  - Glitch-like quick fade-ins on scroll.
+  - Hover effects on cards with a sharp transform and cyan/magenta glowing box-shadows.
+  - Floating and pulsing animations for badges.
+  - Sharp, fast transitions for interactive elements.
+
+### Color Palette & Accents:
+- Primary Accents: Neon Cyan (`#00f0ff`) and Magenta (`#ff00ff`).
+- Badges: 
+  - 🔴 Critical: Pulsing neon red.
+  - 🟠 High: Glowing bright orange.
+  - 🟡 Medium: Bright neon yellow.
+  - 🟢 Low: Toxic neon green.
+""",
+    """
+### Design System & Theme: Elegant Minimalist SaaS
+- **Font:** 'Inter' or 'Plus Jakarta Sans' (Google Fonts).
+- **Theme:** Clean, modern dark mode (default to rich dark `#111827`) with soft frosted glass (backdrop-filter) and elegant thin borders.
+- **Layout:** Spacious, centered container with plenty of whitespace and refined elegant typography.
+- **Background:** Soft gradient dark mesh or subtle glowing soft violet orbs in the background.
+- **Animations:** 
+  - Buttery smooth fade-in and slide-up on scroll.
+  - Soft hover effects on tables/cards (slight lift and soft diffused shadow).
+  - Elegant easing transitions (`cubic-bezier`).
+
+### Color Palette & Accents:
+- Primary Accents: Soft Indigo (`#6366f1`) and Teal (`#14b8a6`).
+- Badges: 
+  - 🔴 Critical: Soft crimson with white text.
+  - 🟠 High: Burnt orange with a subtle glow.
+  - 🟡 Medium: Soft amber.
+  - 🟢 Low: Emerald green.
+""",
+    """
+### Design System & Theme: Oceanic Deep Blue
+- **Font:** 'Outfit' or 'Montserrat' (Google Fonts).
+- **Theme:** Deep nautical theme (`#07192f`) with aquatic glow effects and rounded, liquid-like UI elements.
+- **Layout:** Centered content with a floating, sticky sidebar navigation.
+- **Background:** Deep ocean blue gradient with a slow, wave-like animated background or subtle particle floaters.
+- **Animations:** 
+  - Fluid, bouncy fade-ins on scroll.
+  - Hover effects on cards that feel like elements floating to the surface (translateY with soft blue shadow).
+  - Floating and smooth pulsing animations for badges.
+  - Wave-like ripple transitions where appropriate.
+
+### Color Palette & Accents:
+- Primary Accents: Aqua Marine (`#64ffda`) and Ocean Blue (`#112240`).
+- Badges: 
+  - 🔴 Critical: Coral red.
+  - 🟠 High: Sunset orange.
+  - 🟡 Medium: Sand yellow.
+  - 🟢 Low: Seafoam green.
+""",
+    """
+### Design System & Theme: High-Contrast Developer Console
+- **Font:** 'Fira Code' or 'JetBrains Mono' (Google Fonts).
+- **Theme:** IDE/Terminal inspired. Pitch black (`#000000`) with high contrast syntax highlighting colors.
+- **Layout:** Centered content with a floating, sticky sidebar navigation.
+- **Background:** Solid black background with subtle terminal-like scanlines.
+- **Animations:** 
+  - Staggered typing-like reveal effects or sharp instant fade-ins.
+  - Subtle glowing left-border on hover for tables and cards.
+  - Pulsing cursor-like animations for active elements or badges.
+  - Snappy, crisp, sub-100ms transitions.
+
+### Color Palette & Accents:
+- Primary Accents: Hacker Green (`#00ff00`) and Bright Yellow (`#ffff00`).
+- Badges: 
+  - 🔴 Critical: Solid Red background, Black text.
+  - 🟠 High: Solid Orange background, Black text.
+  - 🟡 Medium: Solid Yellow background, Black text.
+  - 🟢 Low: Solid Green background, Black text.
+""",
+    """
+### Design System & Theme: Sunset Glow & Glass
+- **Font:** 'Poppins' or 'Syne' (Google Fonts).
+- **Theme:** Warm, vibrant dark mode (`#1a0b12`) mixing deep purples and warm gradients.
+- **Layout:** Centered content with a floating, sticky sidebar navigation.
+- **Background:** Deep violet merging into soft orange/pink glowing blobs (CSS animated gradients) blurred behind a glass overlay.
+- **Animations:** 
+  - Smooth scale-up and fade-in on load and scroll.
+  - Rich 3D-like hover effects on blocks (subtle scale and colorful drop shadow cast).
+  - Fluid color-shifting animations on the primary text accents.
+  
+### Color Palette & Accents:
+- Primary Accents: Sunset Orange (`#ff7e5f`) and Deep Magenta (`#feb47b`).
+- Badges: 
+  - 🔴 Critical: Bright crimson glow.
+  - 🟠 High: Blazing orange glow.
+  - 🟡 Medium: Golden glowing accent.
+  - 🟢 Low: Bright lime glow.
+"""
+]
+
 HTML_REPORT_PROMPT = """You are a Modern Web Architect. Convert the Markdown review report into a premium, responsive, and data-driven HTML document.
 
 ### Input Report:
 {synthesis_result}
 
-### Design System:
-- **Font:** Inter, sans-serif (import from Google Fonts).
-- **Theme:** Dark mode by default with elegant glassmorphism effects.
-- **Layout:** Centered container with a sidebar or sticky navigation for sections.
-- **Accents:** Neon blue for links, subtle gradients for card backgrounds.
-- **Badges:** 
-  - 🔴 Critical: `#ff4d4d` background, white text.
-  - 🟠 High: `#ffa333` background, black text.
-  - 🟡 Medium: `#ffff66` background, black text.
-  - 🟢 Low: `#55ff55` background, black text.
+{theme_instructions}
 
 ### Implementation Rules:
 - Output a single, standalone HTML file.
 - All CSS must be inline within `<style>` tags.
 - Use Semantic HTML5.
-- Tables must be styled with hover effects and rounded corners.
+- Tables must be beautifully styled with hover row effects, gradient borders, and rounded corners matching the requested theme.
 - **Absolute Rule:** Do NOT use Markdown code fences (e.g., ````html`). Start directly with `<!DOCTYPE html>`.
 
 ### Goal:
-The user should feel they are looking at a premium enterprise-grade report.
+The user should feel they are looking at a state-of-the-art, premium enterprise-grade security and code quality report that perfectly embodies the randomly selected visual theme. Provide an extremely beautiful outcome!
 """
