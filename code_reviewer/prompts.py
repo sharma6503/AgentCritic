@@ -433,11 +433,17 @@ HTML_REPORT_PROMPT = """You are a Modern Web Architect. Convert the Markdown rev
 - Output a single, standalone HTML file.
 - All CSS must be inline within `<style>` tags.
 - Use Semantic HTML5.
-- Tables must be beautifully styled with hover row effects, gradient borders, and rounded corners matching the requested theme.
+- **Human-Reviewed Format:** The report must feel like a premium audit delivered by a Senior Staff Engineer. 
+  - Include a visually distinct "Meta Dashboard" at the very top containing: `Reviewed By: AI Code Reviewer Fleet`, `Date: (Current Date)`, `Review Type: Comprehensive Security & Quality Audit`.
+- **Structured Component Layouts:** Do not just output walls of text. You must intelligently structure the content using distinct UI components:
+  - **Header & Meta:** Title and the Meta Dashboard.
+  - **Metrics Dashboard:** If the following base64 string is NOT empty, embed it prominently immediately below the header/meta section using `<img src="data:image/png;base64,{metrics_chart_b64}" alt="Metrics Bar Chart" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 2rem;" />`.
+  - **Executive Summary:** A highlighted card or callout box summarizing the overall codebase health.
+  - **Findings Grid/Cards:** Wrap individual findings, security issues, and action items in distinct visual cards or CSS Grid layouts, rather than plain bulleted lists.
+  - **Tables:** Tables must be beautifully styled with hover row effects, gradient borders, and rounded corners matching the requested theme.
 - **Dynamic Title:** Read the synthesis report and dynamically generate an accurate, specific `<title>` tag and main `<h1>` heading that includes the target repository name, project name, or codebase topic (e.g., "Code Review: adk-samples-repochecker" rather than just "Code Review Report").
-- **Metrics Visualization:** If the following base64 string is NOT empty, embed it prominently at the top of the report immediately below the main header using `<img src="data:image/png;base64,{metrics_chart_b64}" alt="Metrics Bar Chart" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" />`.
 - **Absolute Rule:** Do NOT use Markdown code fences (e.g., ````html`). Start directly with `<!DOCTYPE html>`.
 
 ### Goal:
-The user should feel they are looking at a state-of-the-art, premium enterprise-grade security and code quality report that perfectly embodies the randomly selected visual theme. Provide an extremely beautiful outcome!
+The user should feel they are looking at a state-of-the-art, premium enterprise-grade security and code quality report that resembles a formal, human-audited SOC2/quality compliance deliverable. It must perfectly embody the requested visual theme. Provide an extremely beautiful, well-organized component outcome!
 """
