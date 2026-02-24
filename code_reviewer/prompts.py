@@ -434,6 +434,7 @@ HTML_REPORT_PROMPT = """You are a Modern Web Architect. Convert the Markdown rev
 - All CSS must be inline within `<style>` tags.
 - Use Semantic HTML5.
 - Tables must be beautifully styled with hover row effects, gradient borders, and rounded corners matching the requested theme.
+- **Dynamic Title:** Read the synthesis report and dynamically generate an accurate, specific `<title>` tag and main `<h1>` heading that includes the target repository name, project name, or codebase topic (e.g., "Code Review: adk-samples-repochecker" rather than just "Code Review Report").
 - **Absolute Rule:** Do NOT use Markdown code fences (e.g., ````html`). Start directly with `<!DOCTYPE html>`.
 
 ### Goal:
