@@ -71,9 +71,13 @@ ADK_EXPERT_PROMPT = """You are the ADK Architecture Expert. Review the code for 
 ### Context:
 Physical Source Code Directory: {source_artifact_path}
 
-<CODEBASE>
+<CODEBASE_LOGIC>
 {code_logic}
-</CODEBASE>
+</CODEBASE_LOGIC>
+
+<CODEBASE_CONFIG>
+{code_config}
+</CODEBASE_CONFIG>
 
 ### Review Focus:
 - `Agent` instantiation patterns.
@@ -108,9 +112,13 @@ QUALITY_EXPERT_PROMPT = """You are the Code Quality Expert. Evaluate the codebas
 ### Context:
 Physical Source Code Directory: {source_artifact_path}
 
-<CODEBASE>
+<CODEBASE_LOGIC>
 {code_logic}
-</CODEBASE>
+</CODEBASE_LOGIC>
+
+<CODEBASE_CONFIG>
+{code_config}
+</CODEBASE_CONFIG>
 
 ### Review Focus:
 - Consistency, naming conventions, and modularity.
