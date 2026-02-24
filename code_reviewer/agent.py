@@ -82,6 +82,7 @@ from google.adk import Agent  # noqa: E402
 from google.adk.agents import SequentialAgent, ParallelAgent  # noqa: E402
 from google.adk.agents.callback_context import CallbackContext  # noqa: E402
 from google.adk.planners.plan_re_act_planner import PlanReActPlanner  # noqa: E402
+from google.adk.plugins import ReflectAndRetryToolPlugin  # noqa: E402
 
 from code_reviewer.config import Config  # noqa: E402
 from code_reviewer.prompts import SUPERVISOR_PROMPT  # noqa: E402
@@ -299,7 +300,10 @@ root_agent = Agent(
 app = App(
     name='code_reviewer',
     root_agent=root_agent,
-    plugins=[LoggingPlugin()],
+    plugins=[
+        LoggingPlugin(),
+        ReflectAndRetryToolPlugin(max_retries=3)
+    ],
     context_cache_config=ContextCacheConfig(
         min_tokens=32768, # Cache larger inputs like full repositories
         ttl_seconds=3600, # Store for up to 1 hour
