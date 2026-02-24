@@ -15,7 +15,10 @@ async def generate_and_save_html_callback(callback_context):
         return None
 
     # Manually generate HTML using a separate client to avoid streaming to chat
-    client = Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+    # If GOOGLE_API_KEY is missing, Client() will automatically fall back to 
+    # Vertex AI if GOOGLE_CLOUD_PROJECT and GOOGLE_GENAI_USE_VERTEXAI are set.
+    api_key = os.environ.get("GOOGLE_API_KEY")
+    client = Client(api_key=api_key) if api_key else Client()
     
     # Pick a random dynamic theme for this report
     selected_theme_instructions = random.choice(REPORT_THEMES)

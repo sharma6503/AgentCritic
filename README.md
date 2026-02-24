@@ -31,9 +31,21 @@ A powerful, multi-agent AI code review platform built with **Google ADK (Agent D
 - Node.js v18+ 
 
 ### 1. Environment Configuration
-Create a `.env` file in the root directory (where `api.py` lives) with the following essential API keys:
+Create a `.env` file in the root directory (where `api.py` lives). The application supports both standard Gemini API Keys and Enterprise Google Cloud (Vertex AI) authentication.
+
+**Option A: Standard Gemini API Key**
 ```env
 GOOGLE_API_KEY=your_gemini_api_key
+GITHUB_TOKEN=your_github_authorization_token_for_fast_fetching
+```
+
+**Option B: Vertex AI (Google Cloud Project)**
+Ensure you have authenticated your local terminal using `gcloud auth application-default login` first.
+```env
+# Omit GOOGLE_API_KEY entirely
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_GENAI_USE_VERTEXAI=True
 GITHUB_TOKEN=your_github_authorization_token_for_fast_fetching
 ```
 
