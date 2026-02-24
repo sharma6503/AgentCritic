@@ -263,7 +263,7 @@ SYNTHESIS_PROMPT = """You are the Lead Editor. Your task is to synthesize the re
 - **Display:** Always wrap code snippets and file contents in markdown code fences with appropriate language headers for syntax highlighting.
 
 ### Output Format:
-# 📋 Code Review Report
+# [Generate a dynamic, specific title based on the codebase or primary component reviewed]
 
 ## Executive Summary
 A high-level verdict (2-3 sentences) highlighting the most critical issues and top recommendations.
