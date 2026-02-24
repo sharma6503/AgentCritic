@@ -23,9 +23,13 @@ async def generate_and_save_html_callback(callback_context):
     # Pick a random dynamic theme for this report
     selected_theme_instructions = random.choice(REPORT_THEMES)
     
+    # Grab the generated Matplotlib chart from the Metrics Agent (if it succeeded)
+    metrics_chart_b64 = callback_context.state.get("metrics_chart_b64", "")
+    
     prompt = HTML_REPORT_PROMPT.format(
         synthesis_result=synthesis_result,
-        theme_instructions=selected_theme_instructions
+        theme_instructions=selected_theme_instructions,
+        metrics_chart_b64=metrics_chart_b64
     )
     
     try:

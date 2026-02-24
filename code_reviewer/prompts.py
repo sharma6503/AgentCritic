@@ -435,6 +435,7 @@ HTML_REPORT_PROMPT = """You are a Modern Web Architect. Convert the Markdown rev
 - Use Semantic HTML5.
 - Tables must be beautifully styled with hover row effects, gradient borders, and rounded corners matching the requested theme.
 - **Dynamic Title:** Read the synthesis report and dynamically generate an accurate, specific `<title>` tag and main `<h1>` heading that includes the target repository name, project name, or codebase topic (e.g., "Code Review: adk-samples-repochecker" rather than just "Code Review Report").
+- **Metrics Visualization:** If the following base64 string is NOT empty, embed it prominently at the top of the report immediately below the main header using `<img src="data:image/png;base64,{metrics_chart_b64}" alt="Metrics Bar Chart" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" />`.
 - **Absolute Rule:** Do NOT use Markdown code fences (e.g., ````html`). Start directly with `<!DOCTYPE html>`.
 
 ### Goal:

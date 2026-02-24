@@ -182,9 +182,10 @@ def _read_zip_member_safe(zip_path: Path, member_name: str) -> str:
 
 
 def _unzip_to_target(zip_path: Path, target_dir: Path, skipped: list):
-    """Physically extracts eligible code files from a ZIP archive to a given target directory."""
+    """Physically extracts eligible code files from a ZIP archive to a given target directory in parallel."""
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
+            extract_tasks = []
             for name in zf.namelist():
                 if name.endswith('/'): continue
                 
@@ -200,14 +201,29 @@ def _unzip_to_target(zip_path: Path, target_dir: Path, skipped: list):
                     skipped.append(f"{name}: too large to extract to physical artifact")
                     continue
                     
+                extract_tasks.append(name)
+                
+            def _extract_member(member_name):
                 try:
-                    source_file = zf.open(name)
-                    target_path = target_dir / name
+                    target_path = target_dir / member_name
                     target_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(target_path, "wb") as output_file:
-                        shutil.copyfileobj(source_file, output_file)
+                    # Open a fresh handle for the thread to prevent ZipFile concurrency locks
+                    with zipfile.ZipFile(zip_path, "r") as thread_zf:
+                        with thread_zf.open(member_name) as source_file:
+                            with open(target_path, "wb") as output_file:
+                                shutil.copyfileobj(source_file, output_file)
                 except Exception as e:
-                    skipped.append(f"{name}: error extracting - {e}")
+                    return f"{member_name}: error extracting - {e}"
+                return None
+                
+            if extract_tasks:
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    futures = {executor.submit(_extract_member, name): name for name in extract_tasks}
+                    for future in concurrent.futures.as_completed(futures):
+                        err = future.result()
+                        if err:
+                            skipped.append(err)
     except Exception as e:
         skipped.append(f"Failed to unzip {zip_path.name}: {e}")
 
