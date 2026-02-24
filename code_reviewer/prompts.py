@@ -335,102 +335,90 @@ Output the final Markdown report.
 # ---------------------------------------------------------------------------
 REPORT_THEMES = [
     """
-### Design System & Theme: Neon Cyberpunk
-- **Font:** 'Orbitron' or 'Roboto Mono' (Google Fonts).
-- **Theme:** Ultra-dark mode (`#050510`) with glowing glassmorphism and CRT/glitch subtle effects.
-- **Layout:** Centered content with a floating, sticky sidebar navigation.
-- **Background:** Deep black with faint neon grid lines or matrix-like subtle animated mesh.
+### Design System & Theme: Clean Corporate Light
+- **Font:** 'Inter' or 'Roboto' (Google Fonts).
+- **Theme:** Professional, bright, and highly legible. Pure white background (`#ffffff`).
+- **Layout:** Centered content, spacious margins, clear typographic hierarchy.
+- **Background:** Crisp white with very faint, elegant gray section dividers (`#f3f4f6`).
 - **Animations:** 
-  - Glitch-like quick fade-ins on scroll.
-  - Hover effects on cards with a sharp transform and cyan/magenta glowing box-shadows.
-  - Floating and pulsing animations for badges.
-  - Sharp, fast transitions for interactive elements.
-
-### Color Palette & Accents:
-- Primary Accents: Neon Cyan (`#00f0ff`) and Magenta (`#ff00ff`).
-- Badges: 
-  - 🔴 Critical: Pulsing neon red.
-  - 🟠 High: Glowing bright orange.
-  - 🟡 Medium: Bright neon yellow.
-  - 🟢 Low: Toxic neon green.
+  - Subtle, professional fade-ins.
+  - Very slight box-shadow increase on hover (no wild movements).
+- **Color Palette & Accents:**
+  - Primary Accents: Corporate Blue (`#2563eb`) and Slate Gray (`#475569`).
+  - Text: Dark charcoal (`#1e293b`) for maximum contrast and readability.
+  - Badges: 
+    - 🔴 Critical: Soft crimson (`#e11d48`).
+    - 🟠 High: Burnt orange (`#ea580c`).
+    - 🟡 Medium: Warm amber (`#d97706`).
+    - 🟢 Low: Forest green (`#16a34a`).
 """,
     """
-### Design System & Theme: Elegant Minimalist SaaS
-- **Font:** 'Inter' or 'Plus Jakarta Sans' (Google Fonts).
-- **Theme:** Clean, modern dark mode (default to rich dark `#111827`) with soft frosted glass (backdrop-filter) and elegant thin borders.
-- **Layout:** Spacious, centered container with plenty of whitespace and refined elegant typography.
-- **Background:** Soft gradient dark mesh or subtle glowing soft violet orbs in the background.
+### Design System & Theme: Scandinavian Minimalist
+- **Font:** 'Outfit' or 'Plus Jakarta Sans' (Google Fonts).
+- **Theme:** Airy, light, and focused entirely on content. Off-white/creamy background (`#fafaf9`).
+- **Layout:** Wide, breathable layout with generous padding and very soft rounded corners (`border-radius: 8px`).
+- **Background:** Soft warm-white (`#fafaf9`) with borderless floating cards that have a nearly invisible drop shadow.
 - **Animations:** 
-  - Buttery smooth fade-in and slide-up on scroll.
-  - Soft hover effects on tables/cards (slight lift and soft diffused shadow).
-  - Elegant easing transitions (`cubic-bezier`).
-
-### Color Palette & Accents:
-- Primary Accents: Soft Indigo (`#6366f1`) and Teal (`#14b8a6`).
-- Badges: 
-  - 🔴 Critical: Soft crimson with white text.
-  - 🟠 High: Burnt orange with a subtle glow.
-  - 🟡 Medium: Soft amber.
-  - 🟢 Low: Emerald green.
+  - Buttery smooth, slow fade-in on scroll (`cubic-bezier`).
+- **Color Palette & Accents:**
+  - Primary Accents: Muted Sage (`#78aba8`) and Soft Taupe (`#a39b8b`).
+  - Text: Deep brown-grey (`#44403c`) for softer contrast than pure black, reducing eye strain.
+  - Badges: 
+    - 🔴 Critical: Muted rose (`#be123c`).
+    - 🟠 High: Soft clay (`#c2410c`).
+    - 🟡 Medium: Mustard (`#ca8a04`).
+    - 🟢 Low: Soft moss (`#15803d`).
 """,
     """
-### Design System & Theme: Oceanic Deep Blue
-- **Font:** 'Outfit' or 'Montserrat' (Google Fonts).
-- **Theme:** Deep nautical theme (`#07192f`) with aquatic glow effects and rounded, liquid-like UI elements.
-- **Layout:** Centered content with a floating, sticky sidebar navigation.
-- **Background:** Deep ocean blue gradient with a slow, wave-like animated background or subtle particle floaters.
+### Design System & Theme: Dim Sepia Reader
+- **Font:** 'Merriweather' (Serif for body) and 'Open Sans' (Sans-serif for headings).
+- **Theme:** Designed specifically for long reading sessions without eye strain. Warm, dim sepia background (`#fcf8f2`).
+- **Layout:** Book-like layout. Narrower central column for optimal line length (around 70 characters).
+- **Background:** Classic sepia tone (`#fcf8f2`) to dramatically reduce harsh blue light.
 - **Animations:** 
-  - Fluid, bouncy fade-ins on scroll.
-  - Hover effects on cards that feel like elements floating to the surface (translateY with soft blue shadow).
-  - Floating and smooth pulsing animations for badges.
-  - Wave-like ripple transitions where appropriate.
-
-### Color Palette & Accents:
-- Primary Accents: Aqua Marine (`#64ffda`) and Ocean Blue (`#112240`).
-- Badges: 
-  - 🔴 Critical: Coral red.
-  - 🟠 High: Sunset orange.
-  - 🟡 Medium: Sand yellow.
-  - 🟢 Low: Seafoam green.
+  - Zero heavy animations. Instant readability. Smooth scrolling.
+- **Color Palette & Accents:**
+  - Primary Accents: Dark Mocha (`#3e2723`) and Brick Red.
+  - Text: Very dark espresso (`#2b1b17`), softer than pure black.
+  - Badges: 
+    - 🔴 Critical: Brick red.
+    - 🟠 High: Rust orange.
+    - 🟡 Medium: Deep ochre.
+    - 🟢 Low: Olive drab.
 """,
     """
-### Design System & Theme: High-Contrast Developer Console
-- **Font:** 'Fira Code' or 'JetBrains Mono' (Google Fonts).
-- **Theme:** IDE/Terminal inspired. Pitch black (`#000000`) with high contrast syntax highlighting colors.
-- **Layout:** Centered content with a floating, sticky sidebar navigation.
-- **Background:** Solid black background with subtle terminal-like scanlines.
+### Design System & Theme: Soft Slate & Frosted Glass
+- **Font:** 'Nunito' or 'Quicksand' (Google Fonts).
+- **Theme:** Modern but approachable. Very pale grey-blue background (`#f8fafc`).
+- **Layout:** Content split into neat, distinct cards using CSS `backdrop-filter: blur()`.
+- **Background:** A very subtle, mostly white gradient from top-left to bottom-right mixing `#ffffff` and `#f1f5f9`.
 - **Animations:** 
-  - Staggered typing-like reveal effects or sharp instant fade-ins.
-  - Subtle glowing left-border on hover for tables and cards.
-  - Pulsing cursor-like animations for active elements or badges.
-  - Snappy, crisp, sub-100ms transitions.
-
-### Color Palette & Accents:
-- Primary Accents: Hacker Green (`#00ff00`) and Bright Yellow (`#ffff00`).
-- Badges: 
-  - 🔴 Critical: Solid Red background, Black text.
-  - 🟠 High: Solid Orange background, Black text.
-  - 🟡 Medium: Solid Yellow background, Black text.
-  - 🟢 Low: Solid Green background, Black text.
+  - Soft scaling (`1.01x`) on card hover with frosted glass glow.
+- **Color Palette & Accents:**
+  - Primary Accents: Sky Blue (`#0ea5e9`) and Soft Violet (`#8b5cf6`).
+  - Text: Slate grey (`#334155`).
+  - Badges: 
+    - 🔴 Critical: Soft pink-red.
+    - 🟠 High: Soft peach.
+    - 🟡 Medium: Soft sunlight yellow.
+    - 🟢 Low: Soft mint green.
 """,
     """
-### Design System & Theme: Sunset Glow & Glass
-- **Font:** 'Poppins' or 'Syne' (Google Fonts).
-- **Theme:** Warm, vibrant dark mode (`#1a0b12`) mixing deep purples and warm gradients.
-- **Layout:** Centered content with a floating, sticky sidebar navigation.
-- **Background:** Deep violet merging into soft orange/pink glowing blobs (CSS animated gradients) blurred behind a glass overlay.
+### Design System & Theme: High-Legibility Developer (Light)
+- **Font:** 'Fira Code' or 'JetBrains Mono' (Google Fonts) for code blocks, 'System UI' for text.
+- **Theme:** A light-mode IDE aesthetic (like GitHub Light or VSCode Light). Extremely clean (`#ffffff`).
+- **Layout:** Full width or wide container, crisp solid borders (`1px solid #e5e7eb`), no drop shadows. Flat design.
+- **Background:** Pure white (`#ffffff`) with grey code blocks (`#f6f8fa`).
 - **Animations:** 
-  - Smooth scale-up and fade-in on load and scroll.
-  - Rich 3D-like hover effects on blocks (subtle scale and colorful drop shadow cast).
-  - Fluid color-shifting animations on the primary text accents.
-  
-### Color Palette & Accents:
-- Primary Accents: Sunset Orange (`#ff7e5f`) and Deep Magenta (`#feb47b`).
-- Badges: 
-  - 🔴 Critical: Bright crimson glow.
-  - 🟠 High: Blazing orange glow.
-  - 🟡 Medium: Golden glowing accent.
-  - 🟢 Low: Bright lime glow.
+  - Snappy, instant state changes. No delayed fades.
+- **Color Palette & Accents:**
+  - Primary Accents: GitHub Blue (`#0969da`) and Success Green (`#1a7f37`).
+  - Text: Almost black (`#24292f`) for sharp contrast.
+  - Badges: 
+    - 🔴 Critical: Solid crisp red.
+    - 🟠 High: Solid vibrant orange.
+    - 🟡 Medium: Solid distinct yellow.
+    - 🟢 Low: Solid crisp green.
 """
 ]
 
