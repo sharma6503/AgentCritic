@@ -199,8 +199,8 @@ async def generate_and_save_html_callback(callback_context):
         )
     )
     
-    # Create a safe filename from the dynamic title
-    safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', dynamic_title).strip('_') + ".html"
+    # Create a safe filename from the dynamic title, truncating strictly to prevent Windows MAX_PATH (260 char) limit errors
+    safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', dynamic_title).strip('_')[:30] + ".html"
     # Fallback if title was strange
     if safe_filename == ".html":
         safe_filename = "code_review_report.html"
