@@ -131,7 +131,9 @@ def constitution_callback(callback_context: CallbackContext):
         filtered = []
         for part in parts:
             mime_type = ""
-            if getattr(part, "inline_data", None) and getattr(part.inline_data, "mime_type", None):
+            has_inline = getattr(part, "inline_data", None) is not None
+            
+            if has_inline and getattr(part.inline_data, "mime_type", None):
                 mime_type = part.inline_data.mime_type
             elif getattr(part, "file_data", None) and getattr(part.file_data, "mime_type", None):
                 mime_type = part.file_data.mime_type
@@ -171,6 +173,11 @@ def constitution_callback(callback_context: CallbackContext):
                     msg += " No valid data found or failed to save.]"
                 
                 filtered.append(types.Part.from_text(text=msg))
+                
+            elif has_inline and not mime_type:
+                logger.warning("Filtered out an inline_data part with an empty mime_type to prevent Gemini API crash.")
+                continue # Skip this part entirely to prevent 400 INVALID_ARGUMENT
+                
             else:
                 filtered.append(part)
         return filtered
