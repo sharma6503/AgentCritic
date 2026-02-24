@@ -17,11 +17,6 @@ async def generate_and_save_html_callback(callback_context):
     import markdown
     import datetime
 
-    metrics_img = ""
-    metrics_chart_b64 = callback_context.state.get("metrics_chart_b64", "")
-    if metrics_chart_b64:
-        metrics_img = f'<div class="metrics-container"><img src="data:image/png;base64,{metrics_chart_b64}" alt="Review Metrics" /></div>'
-        
     synthesis_markdown = synthesis_result
     
     import re
@@ -58,24 +53,25 @@ async def generate_and_save_html_callback(callback_context):
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
     :root {{
-        --bg-grad: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        --card-bg: rgba(255, 255, 255, 0.95);
-        --text: #334155;
+        --bg-grad: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        --card-bg: #ffffff;
+        --text: #1e293b;
         --heading: #0f172a;
         --border: #e2e8f0;
-        --accent: #3b82f6;
-        --accent-hover: #2563eb;
-        --code-bg: #1e293b;
-        --code-text: #f8fafc;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+        --code-bg: #f8fafc;
+        --code-text: #0f172a;
         --danger: #ef4444;
         --warn: #f59e0b;
         --ok: #10b981;
     }}
     body {{
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', system-ui, sans-serif;
         background: var(--bg-grad);
         color: var(--text);
-        line-height: 1.7;
+        line-height: 1.8;
+        font-size: 16px;
         padding: 40px 20px;
         margin: 0;
         min-height: 100vh;
@@ -126,16 +122,7 @@ async def generate_and_save_html_callback(callback_context):
     }}
     .meta-item strong {{ color: var(--heading); display: block; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }}
     
-    .metrics-container img {{
-        max-width: 100%;
-        height: auto;
-        border-radius: 12px;
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-        margin: 30px auto;
-        display: block;
-        transition: transform 0.3s ease;
-    }}
-    .metrics-container img:hover {{ transform: scale(1.02); }}
+
     
     pre {{
         background: var(--code-bg);
@@ -144,12 +131,12 @@ async def generate_and_save_html_callback(callback_context):
         border-radius: 10px;
         overflow-x: auto;
         font-size: 0.9em;
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.2);
+        border: 1px solid var(--border);
+        box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.03);
     }}
     code {{
         font-family: 'JetBrains Mono', monospace;
-        background: rgba(15, 23, 42, 0.06);
+        background: rgba(15, 23, 42, 0.04);
         color: #db2777;
         padding: 3px 6px;
         border-radius: 6px;
@@ -187,10 +174,8 @@ async def generate_and_save_html_callback(callback_context):
 <body>
 <div class="container animate__animated animate__fadeIn">
     
-    {metrics_img}
-
     <div class="meta-dash">
-        <div class="meta-item"><strong>Reviewed By</strong> AI Code Reviewer Fleet</div>
+        <div class="meta-item"><strong>Reviewed By</strong> im.agentic.review.ai</div>
         <div class="meta-item"><strong>Report Date</strong> {current_date}</div>
         <div class="meta-item"><strong>Focus Areas</strong> Security, Quality, Architecture</div>
     </div>
