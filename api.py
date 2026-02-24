@@ -619,7 +619,7 @@ async def review_zip(
             )
         else:
             # Individual code file - pass file path directly
-            target_path = str(file_path)
+            target_path = str(file_path).replace('\\', '/')
             message = (
                 f"Please review the uploaded file: {filename}\n"
                 f"Call parse_uploaded_files with file_paths=['{target_path}'] to read the file content, then perform a full code review."

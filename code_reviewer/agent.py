@@ -175,8 +175,9 @@ def constitution_callback(callback_context: CallbackContext):
                 filtered.append(types.Part.from_text(text=msg))
                 
             elif has_inline and not mime_type:
-                logger.warning("Filtered out an inline_data part with an empty mime_type to prevent Gemini API crash.")
-                continue # Skip this part entirely to prevent 400 INVALID_ARGUMENT
+                logger.warning("Patched empty inline_data mime_type to 'text/plain' to prevent API crash.")
+                part.inline_data.mime_type = "text/plain"
+                filtered.append(part)
                 
             else:
                 filtered.append(part)
