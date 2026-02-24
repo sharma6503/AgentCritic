@@ -167,12 +167,11 @@ async def generate_and_save_html_callback(callback_context):
     # Store in state for other agents
     callback_context.state["html_report"] = html_content
         
-        # Return confirmation to skip original agent run and show a clean message
-        return types.Content(
-            parts=[types.Part(text="✨ **HTML Review Report has been generated!**\n\nThe report has been saved as an ADK artifact: `code_review_report.html`.")],
-            role="model"
-        )
-    return None
+    # Return confirmation to skip original agent run and show a clean message
+    return types.Content(
+        parts=[types.Part(text="✨ **HTML Review Report has been generated!**\n\nThe report has been saved as an ADK artifact: `code_review_report.html`.")],
+        role="model"
+    )
 
 html_agent = Agent(
     name="html_agent",
