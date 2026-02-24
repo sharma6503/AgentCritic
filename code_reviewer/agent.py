@@ -175,23 +175,26 @@ def constitution_callback(callback_context: CallbackContext):
                 filtered.append(part)
         return filtered
 
-    # 1. Filter the invocation trigger content
-    if hasattr(callback_context, "user_content") and callback_context.user_content:
-        if getattr(callback_context.user_content, "parts", None):
-            # Mutate the underlying invocation context directly
-            callback_context._invocation_context.user_content.parts = _filter_parts(callback_context.user_content.parts)
-    
-    # 2. Filter session events (where the prompt history is built from)
-    if hasattr(callback_context, "session") and getattr(callback_context.session, "events", None):
-        for event in callback_context.session.events:
-            if getattr(event, "content", None) and getattr(event.content, "parts", None):
-                event.content.parts = _filter_parts(event.content.parts)
-                
-    # 3. Filter history just in case
-    if hasattr(callback_context, "history") and callback_context.history:
-        for msg in callback_context.history:
-            if getattr(msg, "parts", None):
-                msg.parts = _filter_parts(msg.parts)
+    try:
+        # 1. Filter the invocation trigger content
+        if hasattr(callback_context, "user_content") and callback_context.user_content:
+            if getattr(callback_context.user_content, "parts", None):
+                # Mutate the underlying invocation context directly
+                callback_context._invocation_context.user_content.parts = _filter_parts(callback_context.user_content.parts)
+        
+        # 2. Filter session events (where the prompt history is built from)
+        if hasattr(callback_context, "session") and getattr(callback_context.session, "events", None):
+            for event in callback_context.session.events:
+                if getattr(event, "content", None) and getattr(event.content, "parts", None):
+                    event.content.parts = _filter_parts(event.content.parts)
+                    
+        # 3. Filter history just in case
+        if hasattr(callback_context, "history") and callback_context.history:
+            for msg in callback_context.history:
+                if getattr(msg, "parts", None):
+                    msg.parts = _filter_parts(msg.parts)
+    except Exception as e:
+        logger.error(f"Error filtering ZIP parts in before_agent_callback: {e}")
 
 # ---------------------------------------------------------------------------
 # Step 1: The Review Fleet — four experts run concurrently

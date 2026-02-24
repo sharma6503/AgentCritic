@@ -310,11 +310,15 @@ async def _sse_stream(message: str, session_id: str, user_id: str = "default"):
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
-    except* Exception as eg:
-        # Unwrap Python 3.11+ ExceptionGroup (raised by asyncio.TaskGroup)
+    except Exception as e:
         import logging as _log
-        inner_msgs = '; '.join(str(exc) for exc in eg.exceptions)
-        _log.getLogger(__name__).error('SSE TaskGroup error(s): %s', inner_msgs, exc_info=True)
+        # Handle Python 3.11+ ExceptionGroup (raised by asyncio.TaskGroup) manually
+        if isinstance(e, getattr(__builtins__, "ExceptionGroup", type("Dummy", (), {}))):
+            inner_msgs = '; '.join(str(exc) for exc in e.exceptions)
+        else:
+            inner_msgs = str(e)
+            
+        _log.getLogger(__name__).error('SSE Stream error: %s', inner_msgs, exc_info=True)
         yield f"data: {json.dumps({'type': 'error', 'message': f'❌ Agent error: {inner_msgs}'})}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 

@@ -28,11 +28,19 @@ async def generate_and_save_html_callback(callback_context):
         theme_instructions=selected_theme_instructions
     )
     
-    response = client.models.generate_content(
-        model=_cfg.agent_settings.synthesis_model,
-        contents=prompt
-    )
-    html_content = response.text
+    try:
+        response = client.models.generate_content(
+            model=_cfg.agent_settings.synthesis_model,
+            contents=prompt
+        )
+        html_content = response.text
+    except Exception as e:
+        import logging
+        logging.error(f"HTML generation failed due to unknown API error: {e}")
+        return types.Content(
+            parts=[types.Part(text=f"⚠️ **HTML Report Generation Failed:**\n\nAn unexpected error occurred while contacting the model API: `{e}`. The markdown report is still available below.")],
+            role="model"
+        )
 
     if html_content:
         # Strip markdown fences using regex to handle conversational text before the code block
