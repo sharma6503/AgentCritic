@@ -195,14 +195,21 @@ async def generate_and_save_html_callback(callback_context):
             mime_type="text/html"
         )
     )
-    await callback_context.save_artifact(filename="code_review_report.html", artifact=artifact)
+    
+    # Create a safe filename from the dynamic title
+    safe_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', dynamic_title).strip('_') + ".html"
+    # Fallback if title was strange
+    if safe_filename == ".html":
+        safe_filename = "code_review_report.html"
+        
+    await callback_context.save_artifact(filename=safe_filename, artifact=artifact)
     
     # Store in state for other agents
     callback_context.state["html_report"] = html_content
         
     # Return confirmation to skip original agent run and show a clean message
     return types.Content(
-        parts=[types.Part(text="✨ **HTML Review Report has been generated!**\n\nThe report has been saved as an ADK artifact: `code_review_report.html`.")],
+        parts=[types.Part(text=f"✨ **HTML Review Report has been generated!**\n\nThe report has been saved as an ADK artifact: `{safe_filename}`.")],
         role="model"
     )
 
