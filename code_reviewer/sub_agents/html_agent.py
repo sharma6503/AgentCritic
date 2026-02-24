@@ -24,6 +24,13 @@ async def generate_and_save_html_callback(callback_context):
         
     synthesis_markdown = synthesis_result
     
+    import re
+    # Extract dynamic title from the first H1 tag in Markdown
+    dynamic_title = "Code Review Report"
+    title_match = re.search(r'^#\s+(.+)$', synthesis_markdown, re.MULTILINE)
+    if title_match:
+        dynamic_title = title_match.group(1).strip()
+
     # 1. Convert Markdown to raw HTML body
     try:
         html_body = markdown.markdown(
@@ -45,107 +52,148 @@ async def generate_and_save_html_callback(callback_context):
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Code Review Report</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{dynamic_title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
     :root {{
-        --bg: #f8fafc;
-        --card-bg: #ffffff;
+        --bg-grad: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        --card-bg: rgba(255, 255, 255, 0.95);
         --text: #334155;
         --heading: #0f172a;
         --border: #e2e8f0;
-        --accent: #2563eb;
-        --code-bg: #f1f5f9;
+        --accent: #3b82f6;
+        --accent-hover: #2563eb;
+        --code-bg: #1e293b;
+        --code-text: #f8fafc;
         --danger: #ef4444;
         --warn: #f59e0b;
         --ok: #10b981;
     }}
     body {{
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: var(--bg);
+        font-family: 'Inter', sans-serif;
+        background: var(--bg-grad);
         color: var(--text);
-        line-height: 1.6;
+        line-height: 1.7;
         padding: 40px 20px;
         margin: 0;
+        min-height: 100vh;
     }}
     .container {{
         max-width: 1000px;
         margin: 0 auto;
         background: var(--card-bg);
-        padding: 40px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        padding: 50px;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        backdrop-filter: blur(10px);
+        transform: translateY(20px);
+        opacity: 0;
+        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }}
+    @keyframes slideUp {{
+        to {{ transform: translateY(0); opacity: 1; }}
+    }}
+    
     h1, h2, h3, h4 {{
         color: var(--heading);
-        margin-top: 2em;
-        margin-bottom: 0.5em;
+        font-weight: 700;
+        margin-top: 2.2em;
+        margin-bottom: 0.8em;
+        line-height: 1.3;
     }}
-    h1 {{ font-size: 2.25rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5em; margin-top: 0; }}
-    h2 {{ font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }}
-    p, li {{ font-size: 1rem; }}
+    h1 {{ font-size: 2.5rem; text-align: center; border-bottom: none; margin-top: 0; position: relative; padding-bottom: 0.5em; }}
+    h1::after {{
+        content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80px; height: 4px; background: var(--accent); border-radius: 2px;
+    }}
+    h2 {{ font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: 0.4em; transition: color 0.3s ease; }}
+    h2:hover {{ color: var(--accent); }}
+    
     .meta-dash {{
-        background: var(--code-bg);
-        padding: 15px 20px;
+        background: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+        padding: 20px 25px;
         border-left: 4px solid var(--accent);
-        border-radius: 4px;
-        margin-bottom: 30px;
+        border-radius: 8px;
+        margin: 30px 0;
         font-size: 0.95rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.02);
     }}
+    .meta-item strong {{ color: var(--heading); display: block; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }}
+    
     .metrics-container img {{
         max-width: 100%;
         height: auto;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        margin: 20px 0;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        margin: 30px auto;
+        display: block;
+        transition: transform 0.3s ease;
     }}
+    .metrics-container img:hover {{ transform: scale(1.02); }}
+    
     pre {{
         background: var(--code-bg);
-        padding: 15px;
-        border-radius: 8px;
+        color: var(--code-text);
+        padding: 20px;
+        border-radius: 10px;
         overflow-x: auto;
         font-size: 0.9em;
-        border: 1px solid var(--border);
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.2);
     }}
     code {{
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        background: var(--code-bg);
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-size: 0.9em;
+        font-family: 'JetBrains Mono', monospace;
+        background: rgba(15, 23, 42, 0.06);
+        color: #db2777;
+        padding: 3px 6px;
+        border-radius: 6px;
+        font-size: 0.85em;
     }}
-    pre code {{ background: transparent; padding: 0; }}
+    pre code {{ background: transparent; color: inherit; padding: 0; }}
+    
     table {{
         width: 100%;
-        border-collapse: collapse;
-        margin: 20px 0;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin: 25px 0;
         font-size: 0.95em;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
     }}
-    th, td {{
-        padding: 12px 15px;
-        border-bottom: 1px solid var(--border);
-        text-align: left;
-    }}
-    th {{ background-color: var(--bg); font-weight: 600; color: var(--heading); }}
-    tr:hover {{ background-color: var(--bg); }}
+    th, td {{ padding: 15px 20px; text-align: left; }}
+    th {{ background-color: #f8fafc; font-weight: 600; color: var(--heading); border-bottom: 2px solid var(--border); }}
+    td {{ border-bottom: 1px solid var(--border); }}
+    tr:last-child td {{ border-bottom: none; }}
+    tr:hover td {{ background-color: rgba(59, 130, 246, 0.02); }}
+    
     blockquote {{
         border-left: 4px solid var(--accent);
-        background: var(--bg);
-        margin: 1.5em 0;
-        padding: 0.5em 20px;
-        border-radius: 0 8px 8px 0;
+        background: rgba(59, 130, 246, 0.03);
+        margin: 2em 0;
+        padding: 1em 25px;
+        border-radius: 0 10px 10px 0;
         font-style: italic;
+        color: #475569;
     }}
 </style>
 </head>
 <body>
-<div class="container">
-    <div class="meta-dash">
-        <strong>Reviewed By:</strong> AI Code Reviewer Fleet<br/>
-        <strong>Date:</strong> {current_date}<br/>
-        <strong>Type:</strong> Automated Security & Quality Audit<br/>
-    </div>
+<div class="container animate__animated animate__fadeIn">
     
     {metrics_img}
+
+    <div class="meta-dash">
+        <div class="meta-item"><strong>Reviewed By</strong> AI Code Reviewer Fleet</div>
+        <div class="meta-item"><strong>Report Date</strong> {current_date}</div>
+        <div class="meta-item"><strong>Focus Areas</strong> Security, Quality, Architecture</div>
+    </div>
     
     <div class="content">
         {html_body}
