@@ -16,6 +16,8 @@ import shutil
 import tempfile
 import uuid
 import zipfile
+import subprocess
+import httpx
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -46,9 +48,10 @@ async def lifespan(app: FastAPI):
     _log.basicConfig(level=_log.INFO)
     
     _log.info(f"Initializing DatabaseSessionService at {DB_PATH}")
+    
     try:
-        from google.adk.sessions import DatabaseSessionService
-        _session_service = DatabaseSessionService(DB_PATH)
+        from google.adk.sessions import InMemorySessionService
+        _session_service = InMemorySessionService()
         yield
     finally:
         _log.info("Server shutting down. Session service cleanup...")
@@ -80,14 +83,14 @@ DB_FILE = Path(__file__).parent / "adk_reviewer_sessions.db"
 # and ensure forward slashes are used for the driver.
 DB_PATH = f"sqlite+aiosqlite:///{DB_FILE.as_posix()}"
 
+from google.adk.sessions import InMemorySessionService
+
 _session_service = None
 
 def get_session_service():
     global _session_service
     if _session_service is None:
-        # Fallback for manual scripts or unexpected states
-        from google.adk.sessions import DatabaseSessionService
-        _session_service = DatabaseSessionService(DB_PATH)
+        _session_service = InMemorySessionService()
     return _session_service
 
 def get_runner() -> Runner:
@@ -534,9 +537,9 @@ async def review_url(body: UrlRequest):
         repo = gh_match.group(2).replace(".git", "")
         
         try:
-            # Use a short extraction path to avoid Windows MAX_PATH (WinError 206)
-            extract_base = Path.home() / ".adk_gh_tmp"
-            extract_base.mkdir(parents=True, exist_ok=True)
+            # Use the system's standard temporary directory for extraction
+            extract_base = Path(tempfile.gettempdir()) / "adk_gh_tmp"
+            extract_base.mkdir(parents=True, exist_ok=True, mode=0o700)
             tmp_dir = Path(tempfile.mkdtemp(dir=extract_base, prefix="gh_"))
             tmp_path_for_cleanup = tmp_dir
             
@@ -566,9 +569,6 @@ async def review_url(body: UrlRequest):
         except Exception as e:
             import logging
             logging.error(f"GitHub ZIP fast-path failed: {e}")
-            if tmp_path_for_cleanup:
-                shutil.rmtree(tmp_path_for_cleanup, ignore_errors=True)
-                tmp_path_for_cleanup = None
 
     async def cleanup_after():
         try:
@@ -626,9 +626,11 @@ async def review_zip(
             )
 
         async def cleanup_after():
-            async for chunk in _sse_stream(message, sid, user_id):
-                yield chunk
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            try:
+                async for chunk in _sse_stream(message, sid, user_id):
+                    yield chunk
+            finally:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
 
         return StreamingResponse(
             cleanup_after(),

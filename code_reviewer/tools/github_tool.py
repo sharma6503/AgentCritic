@@ -8,6 +8,7 @@ GitHub repositories using the REST v3 API via the requests library.
 
 import os
 import base64
+import asyncio
 import httpx
 import logging
 
@@ -88,3 +89,49 @@ async def github_list_directory_contents(
             return {"status": "error", "entries": [], "message": f"HTTP {e.response.status_code}: {e}"}
         except Exception as e:
             return {"status": "error", "entries": [], "message": str(e)}
+
+async def github_get_multiple_files(
+    owner: str,
+    repo: str,
+    paths: list[str],
+    ref: str = "HEAD",
+) -> str:
+    """Fetch the contents of multiple files from GitHub in parallel.
+
+    Args:
+        owner: The GitHub organisation or username.
+        repo: The repository name.
+        paths: List of file paths inside the repository.
+        ref: The branch, tag, commit. Defaults to "HEAD".
+
+    Returns:
+        A consolidated string formatted with '--- <path> ---' separators.
+    """
+    if not paths:
+        return "No paths provided."
+
+    async def _fetch(client: httpx.AsyncClient, path: str):
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
+        try:
+            resp = await client.get(url, params={"ref": ref}, timeout=20)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("encoding") == "base64":
+                content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+            else:
+                content = data.get("content", "")
+            return path, content
+        except Exception as e:
+            return path, f"Error: {str(e)}"
+
+    async with httpx.AsyncClient(headers=_HEADERS, follow_redirects=True) as client:
+        tasks = [_fetch(client, p) for p in paths]
+        results = await asyncio.gather(*tasks)
+
+    # Format into standard codebase layout
+    output = []
+    for path, content in results:
+        output.append(f"--- {path} ---\n{content}")
+    
+    return "\n\n".join(output)
+

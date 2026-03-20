@@ -1,346 +1,297 @@
-'use client';
+"use client";
 
-import { useState, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, Terminal, Zap } from 'lucide-react';
-import Header from '../components/Header';
-import InputTabs from '../components/InputTabs';
-import ReviewOutput from '../components/ReviewOutput';
-import AgentProgress from '../components/AgentProgress';
-import AnalysisCard from '../components/AnalysisCard';
-import Sidebar from '../components/Sidebar';
-import styles from './page.module.css';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import {
+    Github,
+    Upload,
+    Type,
+    Play,
+    ShieldCheck,
+    Terminal,
+    Settings as SettingsIcon,
+    Search,
+    Menu,
+    X,
+    FolderTree,
+    MessageSquare,
+    Activity,
+    Layers,
+    ChevronRight,
+    Zap
+} from 'lucide-react';
+import { GlassPanel } from '../components/GlassPanel';
+import { Sidebar } from '../components/Sidebar';
+import { RightPanel } from '../components/RightPanel';
+import { RepoHeader } from '../components/RepoHeader';
 
-const decoder = new TextDecoder();
+// Dynamic import for GraphCanvas to avoid SSR issues with Sigma.js
+const GraphCanvas = dynamic(() => import('../components/GraphCanvas').then(mod => mod.GraphCanvas), {
+    ssr: false,
+    loading: () => (
+        <div className="w-full h-full flex items-center justify-center bg-void text-blue-500/50">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold">Initializing Canvas...</span>
+            </div>
+        </div>
+    )
+});
 
 export default function HomePage() {
-    const [sessionsData, setSessionsData] = useState({});
+    // UI State
+    const [activeTab, setActiveTab] = useState('github');
+    const [projectName, setProjectName] = useState('');
+    const [isSidebarOpen, setSidebarOpen] = useState(true);
+    const [isRightPanelOpen, setRightPanelOpen] = useState(true);
+    const [fileTree, setFileTree] = useState([]);
 
-    // ── Sidebar / session state ──────────────────────────────────────────────
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [userId, setUserId] = useState('agent_dev'); // Premium default
-    const [activeSessionId, setActiveSessionId] = useState(null);
+    // Logic State
+    const [githubUrl, setGithubUrl] = useState('');
+    const [pasteCode, setPasteCode] = useState('');
+    const [isReviewing, setIsReviewing] = useState(false);
+    const [events, setEvents] = useState([]);
+    const [reviewOutput, setReviewOutput] = useState('');
+    const [graphData, setGraphData] = useState(null);
 
-    const sessionRef = useRef(null);
-    const abortControllers = useRef({});
+    // Refs
+    const eventSourceRef = useRef(null);
 
-    // Derived active state
-    const activeData = activeSessionId && sessionsData[activeSessionId] ? sessionsData[activeSessionId] : {
-        output: '',
-        progress: '',
-        isRunning: false,
-        error: '',
-        metrics: null,
-        agentLogs: [],
-        restoredInput: null
+    // Build file tree from flat paths if needed
+    const buildFileTree = (files) => {
+        const root = [];
+        files.forEach(path => {
+            const parts = path.split('/');
+            let currentLevel = root;
+            parts.forEach((part, i) => {
+                let existingPath = currentLevel.find(p => p.name === part);
+                if (!existingPath) {
+                    existingPath = {
+                        name: part,
+                        path: parts.slice(0, i + 1).join('/'),
+                        type: i === parts.length - 1 ? 'file' : 'directory',
+                        children: []
+                    };
+                    currentLevel.push(existingPath);
+                }
+                currentLevel = existingPath.children;
+            });
+        });
+        return root;
     };
 
-    const { output, progress, isRunning, error, metrics, agentLogs, restoredInput } = activeData;
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    // Helper to deeply update a specific session's state
-    const updateSession = useCallback((sid, updater) => {
-        setSessionsData(prev => {
-            const current = prev[sid] || { output: '', progress: '', isRunning: false, error: '', metrics: null, agentLogs: [], restoredInput: null };
-            return {
-                ...prev,
-                [sid]: typeof updater === 'function' ? updater(current) : { ...current, ...updater }
-            };
-        });
-    }, []);
+        setProjectName(file.name.replace('.zip', ''));
+        setEvents([]);
+        setReviewOutput('');
+        setIsReviewing(true);
 
-    // ── Select an existing session ──────────────────────────
-    const handleSelectSession = useCallback(async (sid) => {
-        sessionRef.current = sid;
-        setActiveSessionId(sid);
-
-        // If we already have data for this session and it's either currently running or already loaded, don't refetch
-        if (sessionsData[sid] && (sessionsData[sid].isRunning || sessionsData[sid].output || sessionsData[sid].error)) {
-            return;
-        }
-
-        updateSession(sid, { progress: 'Retuning session state…', error: '' });
+        const formData = new FormData();
+        formData.append("file", file);
 
         try {
-            const res = await fetch(`/api/sessions/${sid}`);
-            if (res.ok) {
-                const data = await res.json();
+            const response = await fetch("http://localhost:8007/api/review/zip", {
+                method: "POST",
+                body: formData,
+            });
 
-                // Restore metrics if present in metadata
-                const fetchedMetrics = data.meta?.metrics || null;
-
-                const messages = data.messages || [];
-
-                // Extract user input
-                let fetchedRestoredInput = null;
-                const userMsg = messages.find(m => m.role === 'user');
-                if (userMsg && userMsg.text) {
-                    const text = userMsg.text;
-                    if (text.startsWith('Please review this repository: ')) {
-                        fetchedRestoredInput = { tab: 'url', url: text.replace('Please review this repository: ', '').trim(), code: '' };
-                    } else if (text.startsWith('Please review the following code:')) {
-                        const codeMatch = text.match(/```\n([\s\S]*?)\n```/);
-                        if (codeMatch) {
-                            fetchedRestoredInput = { tab: 'paste', url: '', code: codeMatch[1].trim() };
-                        } else {
-                            fetchedRestoredInput = { tab: 'paste', url: '', code: text };
-                        }
-                    } else if (text.includes('uploaded codebase') || text.includes('uploaded file:')) {
-                        fetchedRestoredInput = { tab: 'zip', url: '', code: '' };
-                    } else {
-                        fetchedRestoredInput = { tab: 'paste', url: '', code: text };
-                    }
-                }
-
-                // Extract agent logs
-                const logs = messages.filter(m => m.role === 'model' && m.author && m.author !== 'metrics_agent' && m.author !== 'reviser_agent' && m.author !== 'synthesis_agent');
-
-                // Prioritise the final report from the reviser or synthesiser
-                const validTextMsgs = messages.filter(m => m.text && m.text.trim());
-                const reportMsg =
-                    validTextMsgs.slice().reverse().find(m => m.author === 'reviser_agent') ||
-                    validTextMsgs.slice().reverse().find(m => m.author === 'synthesis_agent') ||
-                    validTextMsgs.filter(m => m.role === 'model' && m.author !== 'metrics_agent').pop();
-
-                updateSession(sid, {
-                    output: reportMsg ? reportMsg.text.trim() : '',
-                    metrics: fetchedMetrics,
-                    agentLogs: logs,
-                    restoredInput: fetchedRestoredInput,
-                    progress: ''
-                });
-            } else {
-                updateSession(sid, { error: "Failed to restore session history.", progress: '' });
-            }
-        } catch (e) {
-            console.error("Session restoration failed:", e);
-            updateSession(sid, { error: "Failed to restore session history.", progress: '' });
+            if (!response.ok) throw new Error("Upload failed");
+            setupEventSource(response.headers.get("X-Session-Id"));
+        } catch (error) {
+            setEvents(prev => [...prev, { type: 'error', message: error.message }]);
+            setIsReviewing(false);
         }
-    }, [sessionsData, updateSession]);
+    };
 
-    const handleNewSession = useCallback((sid) => {
-        sessionRef.current = sid || null;
-        setActiveSessionId(sid || null);
-        if (sid) {
-            updateSession(sid, { output: '', progress: '', isRunning: false, error: '', metrics: null, agentLogs: [], restoredInput: null });
-        }
-    }, [updateSession]);
+    const handleGithubReview = async () => {
+        if (!githubUrl) return;
 
-    const stopReview = useCallback(() => {
-        if (activeSessionId && abortControllers.current[activeSessionId]) {
-            abortControllers.current[activeSessionId].abort();
-        }
-    }, [activeSessionId]);
-
-    const runReview = useCallback(async (fetchFn, sid) => {
-        if (!sid) return;
-
-        // Abort previous run for THIS session if any
-        if (abortControllers.current[sid]) {
-            abortControllers.current[sid].abort();
-        }
-
-        const ctrl = new AbortController();
-        abortControllers.current[sid] = ctrl;
-
-        updateSession(sid, {
-            isRunning: true,
-            output: '',
-            error: '',
-            metrics: null,
-            agentLogs: [],
-            progress: 'Initializing analysis agents…'
-        });
+        setEvents([]);
+        setReviewOutput('');
+        setIsReviewing(true);
+        setProjectName(githubUrl.split('/').pop() || 'Repository');
 
         try {
-            const res = await fetchFn(ctrl.signal);
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ detail: res.statusText }));
-                throw new Error(err.detail || 'Analysis service error');
-            }
+            const response = await fetch("http://localhost:8007/api/review/url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: githubUrl }),
+            });
 
-            // In case the backend returns a different ID, though we expect it to respect our passed ID
-            const backendSid = res.headers.get('x-session-id');
-            const finalSid = backendSid || sid;
-
-            const reader = res.body.getReader();
-            let buf = '';
-            let full = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buf += decoder.decode(value, { stream: true });
-                const lines = buf.split('\n');
-                buf = lines.pop() ?? '';
-
-                for (const line of lines) {
-                    if (!line.startsWith('data:')) continue;
-                    try {
-                        const evt = JSON.parse(line.slice(5).trim());
-                        if (evt.type === 'progress') {
-                            updateSession(finalSid, { progress: evt.message });
-                        }
-                        if (evt.type === 'delta') {
-                            full += evt.text;
-                            updateSession(finalSid, { output: full });
-                        }
-                        if (evt.type === 'metrics') {
-                            updateSession(finalSid, { metrics: evt.data });
-                        }
-                        if (evt.type === 'error') {
-                            updateSession(finalSid, { error: evt.message });
-                        }
-                        if (evt.type === 'agent_log') {
-                            updateSession(finalSid, current => {
-                                const logs = [...(current.agentLogs || [])];
-                                const existingIdx = logs.findIndex(l => l.author === evt.data.author);
-                                if (existingIdx > -1) {
-                                    logs[existingIdx] = { ...logs[existingIdx], text: evt.data.text };
-                                } else {
-                                    logs.push(evt.data);
-                                }
-                                return { agentLogs: logs };
-                            });
-                        }
-                        if (evt.type === 'done') {
-                            updateSession(finalSid, { progress: '' });
-                        }
-                    } catch { }
-                }
-            }
-        } catch (e) {
-            if (e.name !== 'AbortError') updateSession(sid, { error: e.message || 'Critical system failure' });
-        } finally {
-            updateSession(sid, { isRunning: false, progress: '' });
-            delete abortControllers.current[sid];
+            if (!response.ok) throw new Error("Request failed");
+            setupEventSource(response.headers.get("X-Session-Id"));
+        } catch (error) {
+            setEvents(prev => [...prev, { type: 'error', message: error.message }]);
+            setIsReviewing(false);
         }
-    }, [updateSession]);
-
-    // ── Triggers ──
-    const initSessionForTrigger = () => {
-        const sid = sessionRef.current || crypto.randomUUID();
-        sessionRef.current = sid;
-        setActiveSessionId(sid);
-        return sid;
     };
 
-    const onUrlReview = (url) => {
-        const sid = initSessionForTrigger();
-        updateSession(sid, { restoredInput: { tab: 'url', url, code: '' } });
-        runReview(sig => fetch('/api/review/url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, session_id: sid, user_id: userId }),
-            signal: sig
-        }), sid);
-    };
+    const setupEventSource = (sessionId) => {
+        if (eventSourceRef.current) eventSourceRef.current.close();
 
-    const onZipReview = (file) => {
-        const sid = initSessionForTrigger();
-        updateSession(sid, { restoredInput: { tab: 'zip', url: '', code: '' } });
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('session_id', sid);
-        fd.append('user_id', userId);
-        runReview(sig => fetch('/api/review/zip', { method: 'POST', body: fd, signal: sig }), sid);
-    };
+        const url = `http://localhost:8007/api/review/stream?session_id=${sessionId}`;
+        const es = new EventSource(url);
+        eventSourceRef.current = es;
 
-    const onPasteReview = (code) => {
-        const sid = initSessionForTrigger();
-        updateSession(sid, { restoredInput: { tab: 'paste', url: '', code } });
-        runReview(sig => fetch('/api/review/paste', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, session_id: sid, user_id: userId }),
-            signal: sig
-        }), sid);
+        es.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'delta') {
+                setReviewOutput(prev => prev + data.content);
+            } else if (data.type === 'graph_data') {
+                setGraphData(data.data);
+                // Extract file list for tree
+                if (data.data.nodes) {
+                    const filePaths = data.data.nodes
+                        .filter(n => n.metadata?.type === 'file' || n.id.includes('.'))
+                        .map(n => n.id);
+                    setFileTree(buildFileTree(filePaths));
+                }
+            } else if (data.type === 'progress' || data.type === 'metrics' || data.type === 'error') {
+                setEvents(prev => [...prev, data]);
+            } else if (data.type === 'done') {
+                setIsReviewing(false);
+                es.close();
+            }
+        };
+
+        es.onerror = (err) => {
+            console.error("SSE Error:", err);
+            setIsReviewing(false);
+            es.close();
+        };
     };
 
     return (
-        <div className={`${styles.page} ${sidebarOpen ? styles.pageShifted : ''}`}>
-            <Sidebar
-                isOpen={sidebarOpen}
-                onToggle={() => setSidebarOpen(o => !o)}
-                userId={userId}
-                onUserChange={setUserId}
-                activeSessionId={activeSessionId}
-                onSelectSession={handleSelectSession}
-                onNewSession={handleNewSession}
-            />
+        <main className="relative h-screen w-screen bg-void overflow-hidden flex flex-col font-sans">
+            {/* Background Canvas (Fixed to viewport to ensure height) */}
+            <div className="fixed inset-0 z-0 overflow-hidden">
+                <GraphCanvas graphData={graphData} />
+            </div>
 
-            <Header isRunning={isRunning} activeSessionId={activeSessionId} />
+            {/* Overlays */}
+            <RepoHeader projectName={projectName} />
 
-            <main className={`${styles.main} animate-in`}>
-                <section className={styles.inputSection}>
-                    <InputTabs
-                        activeSessionId={activeSessionId}
-                        isRunning={isRunning}
-                        onUrlReview={onUrlReview}
-                        onZipReview={onZipReview}
-                        onPasteReview={onPasteReview}
-                        onStop={stopReview}
-                        restoredInput={restoredInput}
+            {/* Floating Sidebar Toggle (When closed) */}
+            {!isSidebarOpen && (
+                <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="fixed left-4 top-4 z-50 p-2 glass border border-white/10 text-white shadow-void"
+                >
+                    <Menu className="w-5 h-5" />
+                </button>
+            )}
+
+            {/* Layout Wrapper */}
+            <div className="relative z-10 flex-1 flex h-full overflow-hidden">
+                {/* Fixed Height Sidebars */}
+                <div className={`h-full transition-all duration-500 overflow-hidden ${isSidebarOpen ? 'w-72 opacity-100' : 'w-0 opacity-0'}`}>
+                    <Sidebar
+                        fileTreeData={fileTree}
+                        onFileSelect={(path) => console.log('Selected:', path)}
+                        onOpenSettings={() => console.log('Open Settings')}
                     />
-                </section>
-
-                <AnimatePresence mode="wait">
-                    {progress && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className={styles.statusWrap}
-                        >
-                            <AgentProgress label={progress} />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                    {error && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            className={styles.errorBanner}
-                        >
-                            <AlertCircle size={18} />
-                            <span>{error}</span>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <div className={`${styles.outputGrid} ${metrics ? styles.outputGridHasMetrics : ''}`}>
-                    {metrics && (
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className={styles.metricsCol}
-                        >
-                            <AnalysisCard metrics={metrics} />
-                        </motion.div>
-                    )}
-
-                    <motion.div
-                        className={styles.reportCol}
-                        layout
-                    >
-                        <ReviewOutput content={output} isRunning={isRunning} agentLogs={agentLogs} />
-                    </motion.div>
                 </div>
-            </main>
 
-            <footer className={styles.appFooter}>
-                <div className={styles.footerInner}>
-                    <div className={styles.footerLeft}>
-                        <Zap size={14} className={styles.pulseZap} />
-                        <span>Powered by ADK Professional Analysis Engine</span>
-                    </div>
-                    <div className={styles.footerRight}>
-                        <span className={styles.statusDot} /> System Operational
-                    </div>
+                <div className="flex-1 flex flex-col items-center justify-center pointer-events-none">
+                    {/* Centered Input Panel (Visible when no project loaded) */}
+                    {!graphData && !isReviewing && (
+                        <div className="w-full max-w-xl animate-in pointer-events-auto px-4">
+                            <GlassPanel className="p-8 border-white/5 bg-void/40">
+                                <div className="flex flex-col items-center text-center mb-10">
+                                    <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/20">
+                                        <Layers className="w-8 h-8 text-blue-400" />
+                                    </div>
+                                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Connect Your Workspace</h1>
+                                    <p className="text-sm text-text-muted">Enter a repository URL or upload a local archive to begin structural analysis.</p>
+                                </div>
+
+                                <div className="flex bg-white/5 p-1 rounded-lg mb-6 border border-white/5">
+                                    <button
+                                        onClick={() => setActiveTab('github')}
+                                        className={`flex-1 py-2 text-xs font-bold transition-all rounded-md ${activeTab === 'github' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-text-muted hover:text-text-secondary'}`}
+                                    >
+                                        GITHUB
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('upload')}
+                                        className={`flex-1 py-2 text-xs font-bold transition-all rounded-md ${activeTab === 'upload' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-text-muted hover:text-text-secondary'}`}
+                                    >
+                                        ARCHIVE
+                                    </button>
+                                </div>
+
+                                {activeTab === 'github' ? (
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <Github className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                                            <input
+                                                type="text"
+                                                placeholder="https://github.com/organization/repo"
+                                                className="w-full bg-void/50 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-mono"
+                                                value={githubUrl}
+                                                onChange={(e) => setGithubUrl(e.target.value)}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleGithubReview}
+                                            disabled={!githubUrl || isReviewing}
+                                            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Play className="w-4 h-4 fill-current" />
+                                            START ANALYSIS
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/10 rounded-xl bg-void/50 cursor-pointer hover:bg-white/5 hover:border-blue-500/30 transition-all group">
+                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                <Upload className="w-8 h-8 text-text-muted mb-2 group-hover:text-blue-400 transition-colors" />
+                                                <p className="text-xs text-text-muted group-hover:text-text-secondary">Drop .zip or Click to browse</p>
+                                            </div>
+                                            <input type="file" className="hidden" accept=".zip" onChange={handleFileUpload} />
+                                        </label>
+                                    </div>
+                                )}
+                            </GlassPanel>
+                        </div>
+                    )}
                 </div>
-            </footer>
-        </div>
+
+                {/* Right Panel Output Overaly */}
+                {(isReviewing || graphData) && (
+                    <div className="h-full flex-shrink-0">
+                        <RightPanel
+                            reviewData={reviewOutput}
+                            agentEvents={events}
+                            isReviewing={isReviewing}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Bottom Status Bar */}
+            <div className="relative z-50 h-8 bg-void/80 backdrop-blur-md border-t border-white/5 px-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Engine Ready</span>
+                    </div>
+                    {isReviewing && (
+                        <div className="flex items-center gap-2 text-blue-400 animate-pulse">
+                            <Activity className="w-3 h-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Processing Stream...</span>
+                        </div>
+                    )}
+                </div>
+                <div className="text-[10px] font-medium text-text-muted">
+                    v0.2.0-beta • ADK Framework • GitNexus Core
+                </div>
+            </div>
+        </main>
     );
 }
+

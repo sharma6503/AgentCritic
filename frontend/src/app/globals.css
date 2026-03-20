@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ─────────────────────────────────────────────────────────────
    im.agentic.review.ai — Global Styles
    Premium Glassmorphism & Cyber-Blue Theme
@@ -6,43 +10,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Dynamic Palette */
-  --bg: #030712;
-  --bg-surface: rgba(17, 24, 39, 0.7);
-  --bg-glass: rgba(17, 24, 39, 0.6);
-  --bg-glass-hover: rgba(17, 24, 39, 0.8);
+  /* GitNexus Void Palette */
+  --void: #000105;
+  --bg-surface: #050505;
+  --bg-card: rgba(10, 10, 10, 0.4);
+  --bg-glass: rgba(5, 5, 5, 0.5);
+  --bg-glass-hover: rgba(15, 15, 15, 0.7);
 
-  --border: rgba(59, 130, 246, 0.2);
-  --border-bright: rgba(59, 130, 246, 0.4);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(59, 130, 246, 0.3);
 
-  --blue-50: #eff6ff;
   --blue-400: #60a5fa;
   --blue-500: #3b82f6;
   --blue-600: #2563eb;
-  --blue-700: #1d4ed8;
-  --cyan-400: #22d3ee;
-  --cyan-500: #06b6d4;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
 
-  --green: #10b981;
-  --red: #ef4444;
-  --yellow: #fbbf24;
-
-  /* Font */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Glassmorphism Specs */
-  --glass-blur: blur(12px);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-blur: blur(20px);
+  --glass-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.5);
 
-  --radius: 12px;
-  --radius-lg: 20px;
+  --radius: 8px;
+  --radius-lg: 16px;
   --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --corner: 20px;
 }
 
 *,
@@ -54,15 +48,21 @@
 }
 
 html,
-body {
+body,
+:root {
+  height: 100%;
   min-height: 100vh;
-  background: radial-gradient(circle at top right, #0a1024, #030712);
+  margin: 0;
+  padding: 0;
+  background-color: var(--void);
+  background-image:
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14px;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 /* ── Glassmorphism Mixin ── */
@@ -250,4 +250,15 @@ body {
 
 .btn-primary:active {
   transform: translateY(0);
+}
+.sigma-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  overflow: hidden;
+  z-index: 0;
 }

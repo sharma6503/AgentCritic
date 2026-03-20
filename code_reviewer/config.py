@@ -20,11 +20,11 @@ class AgentSettings:
 
     # Root supervisor — FAST routing only, never generates long output
     root_model: str = field(
-        default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-2.5-flash")
+        default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-2.0-flash")
     )
     # Expert reviewer fleet — runs 4× in parallel, speed matters most
     expert_model: str = field(
-        default_factory=lambda: os.environ.get("EXPERT_MODEL", "gemini-2.5-flash")
+        default_factory=lambda: os.environ.get("EXPERT_MODEL", "gemini-2.0-flash")
     )
     # Synthesis + metrics (parallel) — quality matters for final output
     synthesis_model: str = field(
@@ -56,7 +56,15 @@ class Config:
         default_factory=lambda: int(os.environ.get("MAX_FILE_SIZE_KB", "500"))
     )
 
-    # Global safety settings wrapped in a config dict for generate_content_config
+    # Rate Limiting & Resilience
+    max_concurrency: int = field(
+        default_factory=lambda: int(os.environ.get("MAX_CONCURRENCY", "2"))
+    )
+    max_retries: int = field(
+        default_factory=lambda: int(os.environ.get("MAX_RETRIES", "5"))
+    )
+
+    # Global safety settings
     safety_config: dict = field(
         default_factory=lambda: {
             "safety_settings": [

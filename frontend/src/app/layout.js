@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
             <head>
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
                     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
                 />
             </head>
-            <body>{children}</body>
+            <body suppressHydrationWarning>{children}</body>
         </html>
     );
 }

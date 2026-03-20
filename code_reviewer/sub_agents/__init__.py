@@ -4,6 +4,7 @@ from .quality_expert import quality_expert
 from .security_expert import security_expert
 from .synthesis_agent import synthesis_agent
 from .code_validator_agent import code_validator_agent
+# from .model_lifecycle_agent import model_lifecycle_expert (Removed)
 from .metrics_agent import metrics_agent
 from .html_agent import html_agent
 
@@ -14,6 +15,7 @@ __all__ = [
     "security_expert",
     "synthesis_agent",
     "code_validator_agent",
+#    "model_lifecycle_expert", (Removed)
     "metrics_agent",
     "html_agent",
 ]

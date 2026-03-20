@@ -42,6 +42,7 @@ from dotenv import load_dotenv
 from google.adk.apps.app import App, ResumabilityConfig
 from google.adk.agents.context_cache_config import ContextCacheConfig
 from google.adk.plugins.logging_plugin import LoggingPlugin
+import asyncio
 
 from code_reviewer.utils.compat import setup_platform_compat
 
@@ -108,6 +109,9 @@ def constitution_callback(callback_context: CallbackContext):
     Enforces the 'Code Reviewer Constitution' by injecting it into the state.
     This ensures all agents stay grounded and compliant.
     """
+    # Always initialize to prevent KeyErrors in instruction building
+    callback_context.state.setdefault("constitution", "Be professional and concise.")
+
     import os
     constitution_path = os.path.join(os.path.dirname(__file__), "knowledge_base", "constitution.md")
     try:
@@ -194,8 +198,9 @@ def constitution_callback(callback_context: CallbackContext):
         # 2. Filter session events (where the prompt history is built from)
         if hasattr(callback_context, "session") and getattr(callback_context.session, "events", None):
             for event in callback_context.session.events:
-                if getattr(event, "content", None) and getattr(event.content, "parts", None):
-                    event.content.parts = _filter_parts(event.content.parts)
+                event_content = getattr(event, "content", None)
+                if event_content and getattr(event_content, "parts", None):
+                    event_content.parts = _filter_parts(event_content.parts)
                     
         # 3. Filter history just in case
         if hasattr(callback_context, "history") and callback_context.history:
@@ -206,6 +211,52 @@ def constitution_callback(callback_context: CallbackContext):
         logger.error(f"Error filtering ZIP parts in before_agent_callback: {e}")
 
 # ---------------------------------------------------------------------------
+# State Purge: Fresh-Review Guarantee for Subsequent Uploads
+# ---------------------------------------------------------------------------
+_REVIEW_STATE_KEYS = [
+    "raw_codebase", "code_logic", "code_config", "code_docs",
+    "adk_review_result", "quality_review_result", "security_review_result",
+    "validation_result", "synthesis_result", "critic_feedback",
+    "review_metrics", "metrics_chart_b64", "html_report_content",
+    "scorecard_html", "metrics_chart_html", "repo_metadata_html",
+    "module_map", "logic_file_count", "is_large_codebase", "source_artifact_path",
+]
+
+def pre_review_reset_callback(callback_context: CallbackContext):
+    """
+    Detects when the user has provided a NEW file/URL and purges all stale
+    review state keys. This ensures that a fresh review runs every time a
+    new codebase is submitted, preventing the pipeline from reusing cached results.
+    """
+    current_request = callback_context.state.get("user_request", "")
+    previous_request = callback_context.state.get("_previous_user_request", "")
+
+    if current_request and current_request != previous_request:
+        logger.info(f"New review request detected. Purging stale state from previous run.")
+        for key in _REVIEW_STATE_KEYS:
+            if key in callback_context.state:
+                del callback_context.state[key]
+        callback_context.state["_previous_user_request"] = current_request
+        logger.info("State purge complete. Ready for fresh review.")
+    else:
+        logger.debug("Same or empty request; skipping state purge.")
+
+
+# ---------------------------------------------------------------------------
+# Traffic Shaping: Concurrency Control to prevent 429s
+# ---------------------------------------------------------------------------
+concurrency_semaphore = asyncio.Semaphore(configs.max_concurrency)
+
+async def traffic_shaper_callback(callback_context: CallbackContext):
+    """Limits concurrent LLM requests to stay within quota."""
+    logger.debug(f"Agent '{callback_context.agent_name}' waiting for concurrency permit...")
+    async with concurrency_semaphore:
+        logger.debug(f"Agent '{callback_context.agent_name}' acquired permit. Starting...")
+        # Note: In ADK, returning/yielding isn't strictly necessary for before_agent_callback 
+        # to block, but the 'async with' ensures the lock is held during the call start.
+        pass
+
+# ---------------------------------------------------------------------------
 # Step 1: The Review Fleet — four experts run concurrently
 # ---------------------------------------------------------------------------
 review_fleet = ParallelAgent(
@@ -214,6 +265,7 @@ review_fleet = ParallelAgent(
         "Concurrently runs ADK Architecture, Code Quality, Security, and "
         "Dynamic Code Validation experts on the ingested codebase."
     ),
+    before_agent_callback=traffic_shaper_callback,
     sub_agents=[
         adk_expert,             # → state['adk_review_result']
         quality_expert,         # → state['quality_review_result']
@@ -242,6 +294,7 @@ reporting_fleet = ParallelAgent(
         "Concurrently executes report synthesis and JSON metrics extraction, "
         "maximizing throughput in the final reporting phase."
     ),
+    before_agent_callback=traffic_shaper_callback,
     sub_agents=[
         synthesis_pipeline, # Refined synthesis loop
         metrics_agent,      # Reads expert results → review_metrics
@@ -258,6 +311,7 @@ review_pipeline = SequentialAgent(
         "An optimized, low-latency execution pipeline. It fetches code, "
         "runs parallel experts, and concurrently generates the final report and metrics."
     ),
+    before_agent_callback=pre_review_reset_callback,
     sub_agents=[
         ingestion_agent,   # Writes raw_codebase to state
         review_fleet,      # Reads raw_codebase, writes 4 review results (Parallel)
@@ -289,7 +343,8 @@ root_agent = Agent(
     ),
     instruction=SUPERVISOR_PROMPT,
     sub_agents=[review_pipeline],
-    planner=PlanReActPlanner(),
+    # NOTE: PlanReActPlanner intentionally removed — it caused over-eager planning
+    # that triggered the full review pipeline for simple greetings like 'hi'.
     generate_content_config=configs.safety_config,
 )
 
@@ -302,10 +357,10 @@ app = App(
     root_agent=root_agent,
     plugins=[
         LoggingPlugin(),
-        ReflectAndRetryToolPlugin(max_retries=3)
+        ReflectAndRetryToolPlugin(max_retries=configs.max_retries)  # Resilience: retries on transient tool failures across entire pipeline
     ],
     context_cache_config=ContextCacheConfig(
-        min_tokens=32768, # Cache larger inputs like full repositories
+        min_tokens=15000, # Increased per user request to 15k
         ttl_seconds=3600, # Store for up to 1 hour
         cache_intervals=10, 
     ),
