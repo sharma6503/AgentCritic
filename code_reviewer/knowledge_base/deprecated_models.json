@@ -1,0 +1,47 @@
+{
+  "gemini-1.0-pro": {
+    "status": "Deprecated",
+    "retirement_date": "2025-02-15",
+    "recommendation": "Migrate to gemini-1.5-pro or gemini-2.0-flash"
+  },
+  "gemini-1.5-pro-001": {
+    "status": "Supported",
+    "retirement_date": "2025-05-24",
+    "recommendation": "Migrate to gemini-1.5-pro-002 or gemini-2.0-flash"
+  },
+  "gemini-1.5-flash-001": {
+    "status": "Supported",
+    "retirement_date": "2025-05-24",
+    "recommendation": "Migrate to gemini-1.5-flash-002 or gemini-2.0-flash"
+  },
+  "gemini-2.0-flash": {
+    "status": "Stable",
+    "retirement_date": "2026-06-01",
+    "recommendation": "Latest stable version"
+  },
+  "gpt-3.5-turbo": {
+    "status": "Legacy",
+    "retirement_date": "TBD",
+    "recommendation": "Migrate to gpt-4o or gpt-4o-mini"
+  },
+  "gpt-4": {
+    "status": "Supported",
+    "retirement_date": "TBD",
+    "recommendation": "Migrate to gpt-4o"
+  },
+  "claude-3-opus": {
+    "status": "Deprecated",
+    "retirement_date": "2026-01-05",
+    "recommendation": "Migrate to Claude 3.5 Sonnet or Claude 3.7 Sonnet"
+  },
+  "claude-3-sonnet": {
+    "status": "Retired",
+    "retirement_date": "2025-07-21",
+    "recommendation": "Migrate to Claude 3.5 Sonnet"
+  },
+  "claude-3-haiku": {
+    "status": "Supported",
+    "retirement_date": "2026-04-19",
+    "recommendation": "Migrate to Claude 3.5 Haiku"
+  }
+}

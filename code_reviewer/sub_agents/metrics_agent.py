@@ -1,90 +1,87 @@
 """
 Metrics Extractor Agent
 
-Parses the synthesis_result markdown report and extracts structured JSON
-with issue counts by severity and category. Used to power the Analysis Card
-in the Next.js frontend.
-
-Uses gemini-2.0-flash (fastest model) — this is a simple extraction task.
+Parses the review results and extracts structured JSON
+with issue counts and multi-dimensional health scores.
 """
 
 from google.adk import Agent
 from ..config import Config
 from ..prompts import METRICS_PROMPT
 import json
+import re
+import logging
+import io
+import base64
 
+logger = logging.getLogger(__name__)
 _cfg = Config()
 
 async def generate_metrics_chart_callback(callback_context):
-    """Intercept the JSON output, plot a chart, and save it to state as base64."""
+    """Intercept the JSON output, plot a dual-pane chart, and save to state."""
     metrics_json_str = callback_context.state.get("review_metrics")
     if not metrics_json_str:
         return
 
     try:
-        # 1. Parse JSON
+        # 1. Robust JSON Extraction
         raw = metrics_json_str.strip()
-        if raw.startswith("```"):
-            raw = "\n".join(l for l in raw.splitlines() if not l.strip().startswith("```")).strip()
+        raw = re.sub(r'^```json\s*', '', raw, flags=re.IGNORECASE)
+        raw = re.sub(r'^```\s*', '', raw, flags=re.IGNORECASE)
+        raw = re.sub(r'\s*```$', '', raw)
+        
+        match = re.search(r'(\{.*\})', raw, re.DOTALL)
+        if match:
+            raw = match.group(1)
+            
         metrics = json.loads(raw)
         
         # 2. Extract Data
         categories = metrics.get("category", {})
+        scores = metrics.get("scores", {})
         
-        if not categories:
-            return
-            
+        # 3. Plotting
+        import matplotlib.pyplot as plt
+        plt.switch_backend('Agg')
+        import seaborn as sns
+        
+        sns.set_theme(style="whitegrid", palette="muted")
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        
+        # Left: Findings by Category
         labels = list(categories.keys())
         counts = list(categories.values())
+        if labels:
+            sns.barplot(x=labels, y=counts, ax=ax1, color="#6366f1")
+            ax1.set_title("Findings count", fontsize=10, fontweight='bold')
         
-        # 3. Plot with Matplotlib/Seaborn
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        import io
-        import base64
+        # Right: Health Scores
+        score_labels = ["Security", "Quality", "Architecture"]
+        score_vals = [scores.get("security", 0), scores.get("quality", 0), scores.get("architecture", 0)]
+        sns.barplot(x=score_labels, y=score_vals, ax=ax2, palette=["#ef4444", "#f59e0b", "#10b981"])
+        ax2.set_ylim(0, 100)
+        ax2.set_title("Health %", fontsize=10, fontweight='bold')
         
-        # Use seaborn style for premium look
-        sns.set_theme(style="whitegrid", palette="muted")
-        
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.barplot(x=labels, y=counts, ax=ax, color="#6366f1")
-        
-        ax.set_title("Findings by Category", fontsize=14, pad=15)
-        ax.set_ylabel("Number of Findings", fontsize=12)
-        ax.set_xlabel("Review Domain", fontsize=12)
-        
-        # Add value labels on top of bars
-        for i, v in enumerate(counts):
-            ax.text(i, v + 0.1, str(v), ha='center', va='bottom', fontweight='bold')
-            
         plt.tight_layout()
         
-        # 4. Save to Base64 memory buffer
+        # 4. Save to Base64
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, transparent=True)
+        plt.savefig(buf, format='png', dpi=120)
         buf.seek(0)
         img_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
         plt.close(fig)
         
-        # 5. Save to ADK state for HTML Agent
+        # 5. Save to state
         callback_context.state["metrics_chart_b64"] = img_b64
-        
-        # 6. Save as ADK Artifact (optional hard copy)
-        from google.genai import types
-        artifact = types.Part(inline_data=types.Blob(data=buf.getvalue(), mime_type="image/png"))
-        await callback_context.save_artifact(filename="metrics_visualization.png", artifact=artifact)
+        callback_context.state["review_metrics"] = metrics
         
     except Exception as e:
-        import logging
-        logging.error(f"Failed to generate metrics chart: {e}")
+        logger.error(f"Metrics processing failed: {e}")
 
 metrics_agent = Agent(
     name="metrics_agent",
-    model=_cfg.agent_settings.expert_model,  # gemini-2.0-flash — fast
-    description=(
-        "Extracts structured metrics JSON from the synthesis_result markdown report. "
-        "Outputs issue counts by severity and category for frontend visualisation."
-    ),
+    model=_cfg.agent_settings.expert_model,
+    description="Extracts multi-dimensional health metrics from review results.",
     instruction=METRICS_PROMPT,
     output_key="review_metrics",
     after_agent_callback=generate_metrics_chart_callback,

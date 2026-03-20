@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>{{TITLE}}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "accent":         "#7c3aed",
+              "accent-light":   "#ede9fe",
+              "accent-muted":   "#a78bfa",
+              "accent-deep":    "#5b21b6",
+              "teal":           "#06b6d4",
+              "amber":          "#f59e0b",
+              "error":          "#ef4444",
+              "success":        "#10b981",
+              "slate-950":      "#020617",
+              "slate-900":      "#0f172a",
+              "slate-800":      "#1e293b",
+              "slate-700":      "#334155",
+              "slate-600":      "#475569",
+              "slate-500":      "#64748b",
+              "slate-400":      "#94a3b8",
+              "slate-300":      "#cbd5e1",
+              "slate-200":      "#e2e8f0",
+              "slate-100":      "#f1f5f9",
+              "slate-50":       "#f8fafc"
+            },
+            fontFamily: {
+              "body": ["Space Grotesk", "system-ui", "sans-serif"],
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+    <style>
+        * { font-family: 'Space Grotesk', system-ui, sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        html { scroll-behavior: smooth; scroll-padding-top: 7rem; }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #a78bfa; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
+
+        /* Hard shadow system */
+        .hard-shadow { box-shadow: 5px 5px 0px 0px #0f172a; }
+        .hard-shadow-sm { box-shadow: 3px 3px 0px 0px #0f172a; }
+
+        /* Hero gradient */
+        .hero-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 100%);
+        }
+
+        /* Active tab */
+        .tab-active {
+            background: #7c3aed;
+            color: white;
+            border-color: #7c3aed;
+        }
+
+        /* Finding Cards */
+        .finding-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .finding-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 7px 7px 0px 0px #0f172a;
+        }
+
+        /* Severity Badges */
+        .severity-critical { background-color: #ef4444; color: white; }
+        .severity-high { background-color: #f59e0b; color: #0f172a; }
+        .severity-medium { background-color: #06b6d4; color: white; }
+        .severity-low { background-color: #cbd5e1; color: #0f172a; }
+
+        /* Section Number Pill */
+        .section-pill {
+            background: linear-gradient(135deg, #7c3aed, #5b21b6);
+            color: white;
+        }
+
+        /* Code Block Styling */
+        .report-content pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.7rem;
+            padding: 0.75rem;
+            overflow-x: auto;
+            border: 2px solid #1e293b;
+            box-shadow: 3px 3px 0px 0px #0f172a;
+            margin: 0.75rem 0;
+            max-width: 100%;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        @media (min-width: 768px) {
+            .report-content pre {
+                font-size: 0.75rem;
+                padding: 1rem;
+                white-space: pre;
+                word-break: normal;
+            }
+        }
+        .report-content code { font-size: 0.8rem; }
+        .report-content p code {
+            background: #ede9fe;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.7rem;
+            border: 1px solid #a78bfa;
+            color: #5b21b6;
+        }
+        @media (min-width: 768px) {
+            .report-content p code { font-size: 0.75rem; }
+        }
+        .report-content table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #0f172a;
+            margin: 0.75rem 0;
+            display: block;
+            overflow-x: auto;
+        }
+        @media (min-width: 768px) {
+            .report-content table { display: table; }
+        }
+        .report-content th {
+            background: #f1f5f9;
+            text-align: left;
+            padding: 0.5rem;
+            font-size: 0.6rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #0f172a;
+            border-right: 1px solid #e2e8f0;
+            color: #475569;
+            white-space: nowrap;
+        }
+        @media (min-width: 768px) {
+            .report-content th { padding: 0.75rem; font-size: 0.65rem; }
+        }
+        .report-content td {
+            padding: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.75rem;
+            border-right: 1px solid #e2e8f0;
+        }
+        @media (min-width: 768px) {
+            .report-content td { padding: 0.75rem; font-size: 0.8rem; }
+        }
+        .report-content tr:hover td { background-color: #f8fafc; }
+        .report-content h2 { margin-top: 2.5rem; }
+        .report-content h3 { margin-top: 1.5rem; }
+
+        /* Recommendation Box */
+        .recommendation {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #ede9fe;
+            border: 2px solid #0f172a;
+            border-left: 5px solid #7c3aed;
+        }
+        @media (min-width: 768px) { .recommendation { padding: 1rem; } }
+        .recommendation-title {
+            font-weight: 900;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+            color: #7c3aed;
+        }
+
+        /* Stat card number animation */
+        .stat-number {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Tab scrollbar hide */
+        .tab-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .tab-scroll::-webkit-scrollbar { display: none; }
+
+        /* Print Styles */
+        @media print {
+            .no-print, .sticky-nav, .floating-btn { display: none !important; }
+            body { background: white !important; }
+            .hero-gradient { background: #0f172a !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .hard-shadow, .hard-shadow-sm { box-shadow: none !important; }
+            .finding-card, .recommendation, section { break-inside: avoid; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            footer { page-break-before: avoid; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 selection:bg-accent-light selection:text-accent-deep">
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- HERO BANNER -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <header class="hero-gradient text-white">
+        <!-- Top bar -->
+        <div class="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-sm overflow-hidden shrink-0">
+                    <img src="https://google.github.io/adk-docs/assets/agent-development-kit.png" alt="ADK Logo" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <span class="font-black text-sm sm:text-base tracking-tighter">Agent Critic</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <span class="hidden lg:block text-[10px] uppercase tracking-widest text-white/40 border border-white/10 px-3 py-1 font-mono">TS: {{DATE}}</span>
+                <button onclick="window.print()" class="bg-white/10 hover:bg-accent border border-white/20 hover:border-accent px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-black uppercase tracking-tighter transition-all active:translate-y-0.5 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">print</span>
+                    <span class="hidden sm:inline">EXPORT_PDF</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Title area -->
+        <div class="px-4 sm:px-8 py-6 sm:py-10 max-w-7xl mx-auto">
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                <div class="space-y-2">
+                    <div class="flex items-center gap-3">
+                        <span class="bg-accent px-2 py-0.5 text-[10px] font-black tracking-widest uppercase">CODE REVIEW</span>
+                        <span class="text-white/40 text-[10px] uppercase tracking-widest">AUTOMATED ANALYSIS</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight break-words max-w-3xl">{{TITLE}}</h1>
+                </div>
+                <div class="flex items-center gap-2 mb-2 sm:mb-4">
+                    <div class="w-6 h-6 shrink-0">
+                        <img src="https://google.github.io/adk-docs/assets/agent-development-kit.png" alt="ADK Logo" class="w-full h-full object-contain">
+                    </div>
+                    <span class="font-black text-xs sm:text-sm tracking-tighter">Agent Critic</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stat strip -->
+        <div class="border-t border-white/10">
+            <div class="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 divide-x divide-white/10">
+                <div class="px-4 sm:px-8 py-4 sm:py-5">
+                    <span class="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/40 block mb-1">HEALTH_SCORE</span>
+                    <div class="stat-number text-lg sm:text-xl font-black tracking-tighter">{{HEALTH_SCORECARD}}</div>
+                </div>
+                <div class="px-4 sm:px-8 py-4 sm:py-5">
+                    <span class="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/40 block mb-1">REVIEW_TIMESTAMP</span>
+                    <span class="text-[11px] sm:text-xs font-black tracking-tight font-mono">{{DATE}}</span>
+                </div>
+                <div class="px-4 sm:px-8 py-4 sm:py-5">
+                    <span class="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/40 block mb-1">REVIEWED_BY</span>
+                    <span class="text-sm sm:text-base font-black tracking-tighter">Agent Critic</span>
+                </div>
+                <div class="px-4 sm:px-8 py-4 sm:py-5">
+                    <span class="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/40 block mb-1">REPORT_TYPE</span>
+                    <span class="text-sm sm:text-base font-black tracking-tighter">COMPREHENSIVE</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- STICKY TAB NAVIGATION -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <nav class="sticky-nav sticky top-0 z-30 bg-white border-b-2 border-slate-900">
+        <div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-8">
+            <div class="tab-scroll flex items-center gap-0 overflow-x-auto py-0 -mb-[2px]">
+                <a href="#summary" class="nav-tab tab-active px-4 sm:px-6 py-3 text-[10px] sm:text-xs font-black uppercase tracking-tighter border-b-2 border-transparent whitespace-nowrap transition-all" data-section="summary">
+                    <span class="material-symbols-outlined text-sm mr-1 align-middle">dashboard</span> Summary
+                </a>
+                <a href="#inventory" class="nav-tab px-4 sm:px-6 py-3 text-[10px] sm:text-xs font-bold uppercase tracking-tighter text-slate-400 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-all" data-section="inventory">
+                    <span class="material-symbols-outlined text-sm mr-1 align-middle">inventory_2</span> Inventory
+                </a>
+                <a href="#metrics" class="nav-tab px-4 sm:px-6 py-3 text-[10px] sm:text-xs font-bold uppercase tracking-tighter text-slate-400 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-all" data-section="metrics">
+                    <span class="material-symbols-outlined text-sm mr-1 align-middle">monitoring</span> Metrics
+                </a>
+                <a href="#findings" class="nav-tab px-4 sm:px-6 py-3 text-[10px] sm:text-xs font-bold uppercase tracking-tighter text-slate-400 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-all" data-section="findings">
+                    <span class="material-symbols-outlined text-sm mr-1 align-middle">bug_report</span> Findings
+                </a>
+            </div>
+            <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="hidden sm:flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-accent transition-colors py-3 no-print shrink-0">
+                <span class="material-symbols-outlined text-sm">expand_less</span> TOP
+            </button>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- MAIN CONTENT -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12 space-y-12 sm:space-y-16">
+
+        <!-- SECTION: EXECUTIVE SUMMARY -->
+        <section id="summary">
+            <div class="flex items-baseline gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <span class="section-pill px-2 py-0.5 text-[10px] font-black tracking-widest uppercase shrink-0">01</span>
+                <h2 class="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter uppercase">EXECUTIVE_SUMMARY</h2>
+            </div>
+            <div class="bg-white border-2 border-slate-900 p-4 sm:p-8 hard-shadow relative overflow-hidden">
+                <div class="relative z-10">
+                    <div class="text-sm sm:text-base leading-relaxed text-slate-600">
+                        {{EXECUTIVE_SUMMARY}}
+                    </div>
+                </div>
+                <div class="absolute -bottom-8 -right-8 w-40 h-40 opacity-[0.03] pointer-events-none">
+                    <svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" fill="#7c3aed" transform="rotate(15 50 50)"/></svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: SCAN INVENTORY -->
+        <section id="inventory">
+            <div class="flex items-baseline gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <span class="section-pill px-2 py-0.5 text-[10px] font-black tracking-widest uppercase shrink-0">02</span>
+                <h2 class="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter uppercase">SCAN_INVENTORY</h2>
+            </div>
+            {{REPO_METADATA}}
+        </section>
+
+        <!-- SECTION: METRICS DASHBOARD -->
+        <section id="metrics">
+            <div class="flex items-baseline gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <span class="section-pill px-2 py-0.5 text-[10px] font-black tracking-widest uppercase shrink-0">03</span>
+                <h2 class="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter uppercase">METRICS_DASHBOARD</h2>
+            </div>
+            {{METRICS_CHART}}
+        </section>
+
+        <!-- SECTION: DETAILED FINDINGS -->
+        <section id="findings" class="report-content">
+            <div class="flex items-baseline gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <span class="section-pill px-2 py-0.5 text-[10px] font-black tracking-widest uppercase shrink-0">04</span>
+                <h2 class="text-xl sm:text-2xl lg:text-3xl font-black tracking-tighter uppercase">DETAILED_FINDINGS</h2>
+            </div>
+            {{CONTENT}}
+        </section>
+
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- FOOTER -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <footer class="border-t-2 border-slate-900 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 shrink-0">
+                        <img src="https://google.github.io/adk-docs/assets/agent-development-kit.png" alt="ADK Logo" class="w-full h-full object-contain">
+                    </div>
+                    <div>
+                        <span class="text-xs font-black uppercase tracking-tighter">Agent Critic</span>
+                    </div>
+                </div>
+                <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-400">&copy; 2026 &bull; Generated via Google Gemini &bull; Confidential</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- FLOATING BACK TO TOP -->
+    <a class="floating-btn fixed bottom-4 sm:bottom-6 right-4 sm:right-6 bg-accent text-white w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center border-2 border-slate-900 hard-shadow-sm hover:bg-accent-deep transition-all active:translate-y-1 no-print z-20" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">
+        <span class="material-symbols-outlined text-lg sm:text-xl">expand_less</span>
+    </a>
+
+<script>
+    // Intersection Observer for active tab highlighting
+    const sections = document.querySelectorAll('section[id]');
+    const navTabs = document.querySelectorAll('.nav-tab');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navTabs.forEach(tab => {
+                    tab.classList.remove('tab-active');
+                    tab.classList.add('text-slate-400');
+                    tab.style.borderColor = 'transparent';
+                });
+                const activeTab = document.querySelector(`.nav-tab[data-section="${entry.target.id}"]`);
+                if (activeTab) {
+                    activeTab.classList.add('tab-active');
+                    activeTab.classList.remove('text-slate-400');
+                }
+            }
+        });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+    sections.forEach(section => observer.observe(section));
+</script>
+</body>
+</html>
