@@ -5,18 +5,27 @@ from code_reviewer.config import Config
 from code_reviewer.prompts import QUALITY_EXPERT_PROMPT
 import pathlib
 import logging
+from ..tools import (
+    github_get_multiple_files,
+    parse_uploaded_files,
+    github_get_file_contents
+)
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # ADK Best Practice: Skill Integration
 # ---------------------------------------------------------------------------
-_tools = []
+_tools = [
+    github_get_multiple_files,
+    parse_uploaded_files,
+    github_get_file_contents
+]
 try:
     from google.adk.skills import load_skill_from_dir
     from google.adk.tools import skill_toolset
     
-    _skill_dir = pathlib.Path(__file__).parent.parent / "skills" / "bug_fixing"
+    _skill_dir = pathlib.Path(__file__).parent.parent / "skills" / "bug-fixing"
     if _skill_dir.exists():
         bug_fixing_skill = load_skill_from_dir(_skill_dir)
         _tools.append(skill_toolset.SkillToolset(skills=[bug_fixing_skill]))

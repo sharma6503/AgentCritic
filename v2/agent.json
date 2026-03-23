@@ -1,0 +1,9 @@
+{
+  "name": "agent_critic_v2",
+  "description": "Agent Critic 2.0 using ADK 2.0 Graph Workflow",
+  "version": "2.0.0",
+  "capabilities": {
+    "multi_agent": true,
+    "graph_workflow": true
+  }
+}

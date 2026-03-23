@@ -14,12 +14,36 @@ from google.adk.agents.callback_context import CallbackContext
 from ..config import Config
 from ..prompts import ADK_EXPERT_PROMPT
 from ..tools.lifecycle_tool import fetch_gemini_model_lifecycle
+import pathlib
 from ..utils.compat import get_binary_path, SafeMcpToolset
+from ..tools import (
+    github_get_multiple_files,
+    parse_uploaded_files,
+    github_get_file_contents
+)
 
 logger = logging.getLogger(__name__)
 
 _cfg = Config()
-_tools = [fetch_gemini_model_lifecycle]  # Always available — scrapes live retirement page
+_tools = [
+    fetch_gemini_model_lifecycle,
+    github_get_multiple_files,
+    parse_uploaded_files,
+    github_get_file_contents
+]  # Core tools for lifecycle and on-demand codebase fetching
+
+# Load Architecture Validation Skill
+try:
+    from google.adk.skills import load_skill_from_dir
+    from google.adk.tools import skill_toolset
+    
+    _skill_dir = pathlib.Path(__file__).parent.parent / "skills" / "architecture-validation"
+    if _skill_dir.exists():
+        arch_skill = load_skill_from_dir(_skill_dir)
+        _tools.append(skill_toolset.SkillToolset(skills=[arch_skill]))
+        logger.info("ADK Expert: Loaded 'architecture-validation' skill.")
+except Exception as e:
+    logger.warning(f"ADK Expert: Could not load skill: {e}")
 
 
 def adk_expert_callback(callback_context: CallbackContext):

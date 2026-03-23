@@ -58,35 +58,14 @@ INGESTION_PROMPT = """You are the Ingestion Agent. Your task is to fetch the cod
 
 ### Workflow A: Uploaded Files (Local/ZIP)
 1. **Call** `parse_uploaded_files(file_paths=["<path>"])`. **CRITICAL: Path must be in a list.**
-2. **Selective Review:** If `user_request` specifies files/dirs (e.g. "only review `main.py`"), still call `parse_uploaded_files` on the ZIP, but ONLY output the contents of the requested files.
-3. **Output** the `codebase` key or specific file contents **verbatim**.
+2. **Output** the `codebase` key **verbatim**.
 
 ### Workflow B: Remote Repositories
 1. **Extract Identifiers:** Parse the URL to get the `owner` and `repo`.
-2. **Selective Review Protocol:**
-   - Check the `user_request` for mentions of specific files or directories (e.g., "Review only `src/api.py`" or "look at the `auth` folder").
-   - If specific paths are mentioned, prioritize those. 
-   - **Recursive Directory Scan:** If a directory is requested, use `github_get_recursive_tree(path="<path>")` to identify files.
-   - **Filter & Batch (CRITICAL):** 
-     - Filter for core files: .py, .ts, .js, .go, .java, .md, .txt. Ignore binary/media files!
-     - **BATCH SIZE:** If more than 30 files are found, fetch them in batches of 30. Use multiple parallel `github_get_multiple_files` calls in one turn OR multiple turns if needed.
-     - Never pass more than 30 paths to a single `github_get_multiple_files` call.
-   - **Persistence:** Ensure at least the core logic files and READMEs are fetched.
-3. **Parallel Exploration (Default):** 
-   - If NO specific paths are requested, use `github_list_multiple_directories(owner="...", repo="...", paths=["", "src", "app", "lib"])` to map the root.
-4. **Ingest Code (PARALLEL):** Use `github_get_multiple_files` to fetch the relevant logic.
-5. **Format:** Output the collected data using the format below.
-
-### Parallel Strategy:
-- **Batch Directory Listing:** Never call `list_directory_contents` sequentially. Use `github_list_multiple_directories` to explore multiple paths at once.
-- **Batch File Fetching:** Always use `github_get_multiple_files` for code. Do NOT fetch files one by one.
-
-### Reflect & Verify (CRITICAL):
-1. **Analyze Initial Fetch:** After calling tools, review the list of files obtained.
-2. **Identify Gaps:** Compare the fetch list with the directory structure. Did you miss a core logic file? Is a file path incorrect?
-3. **Retry Locally/Remotely:** If items are missing or if a tool returned an "Error", use your next turn to FETCH THE MISSING ITEMS.
-4. **Persistence:** Do NOT finish until all core logic files (extensions: .py, .ts, .js, .go, .java) mentioned in the root/src are in your context.
-5. **Goal:** Complete ingestion in 2-3 turns max, with 100% coverage of core files.
+2. **Map the Root:** Use `list_directory_contents(owner="...", repo="...", path="")`.
+3. **Explore Source:** Identify where the logic lives (`src/`, `app/`, etc.) and read the `README.md`.
+4. **Ingest Code (PARALLEL):** Use `github_get_multiple_files(owner="...", repo="...", paths=["path1", "path2", ...])` to fetch all core logic and configuration files in a single parallel call. This is MUCH faster than fetching one by one.
+5. **Format:** You MUST construct the output using the exact layout below.
 
 ### Output Requirements:
 You MUST output the final collected data in this exact format. If using `parse_uploaded_files` or `github_get_multiple_files`, the output is already formatted; just echo the value.
@@ -124,12 +103,6 @@ Physical Source Code Directory: {source_artifact_path}
 {code_config}
 </CODEBASE_CONFIG>
 
-### 🏗️ Architecture Validation Skill — Apply Proactively:
-For every architectural finding, leverage your skill to audit the structural health of the codebase:
-1. **Structural Audit**: Evaluate if the code is modular and layered correctly.
-2. **ADK 2.0 Compliance**: Look for state management patterns (output_key), proper agent instantiation, and explicit tool encapsulation.
-3. **Best Practices Checklist**: Refer to your `architecture-validation` resources for detailed ADK 2.0 guidance.
-
 ### Review Focus:
 1. **ADK Patterns**: `Agent` instantiation, `SequentialAgent`/`ParallelAgent` usage, `output_key` state management, MCP tool safety.
 2. **Model Lifecycle**: Identify ALL model names/strings in the code (e.g., `gemini-2.0-flash`, `gemini-2.5-flash`). For each, use your knowledge to determine:
@@ -144,14 +117,6 @@ For every architectural finding, leverage your skill to audit the structural hea
    - `fetch_gemini_model_lifecycle()` — scrapes the **live** Vertex AI model retirement page for real-time shutdown dates. Always call this first when auditing models.
    - `search_documents(query)` / `get_documents(names)` — queries the **Google Developer Knowledge Base** (ai.google.dev, docs.cloud.google.com) for official deprecation notices, migration guides, and ADK release notes.
    - `fetch_docs(url)` — fetches a specific ADK documentation page to verify current API signatures.
-   - `github_get_multiple_files(paths=[...])` / `parse_uploaded_files(file_paths=[...])` — Use these tools if `is_large_codebase` is true and you suspect the `{code_logic}` provided in the prompt is truncated or missing key files from the `module_map`.
-
-### 📦 Large Codebase Protocol (CRITICAL):
-If **`is_large_codebase`** is `{is_large_codebase}` (True) and you see many files in **`module_map`** ({module_map}) that are NOT present in the provided `<CODEBASE_LOGIC>`:
-1. **DONT GUESS**: Do not assume code you haven't seen is correct.
-2. **FETCH**: Use your tools to fetch content for missing modules (review in batches of 10-20 files).
-3. **CHUNKED REVIEW**: Iterate through the `module_map` systematically. Focus your review on one major component at a time if necessary.
-4. **GOAL**: Ensure you have audited every logic folder mentioned in the `module_map` before finalizing your `adk_review_result`.
 - **Display:** Wrap all code snippets in markdown code fences (```python).
 
 ### Output Format:
@@ -193,13 +158,6 @@ Physical Source Code Directory: {source_artifact_path}
 <CODEBASE_CONFIG>
 {code_config}
 </CODEBASE_CONFIG>
-
-### 📦 Large Codebase Protocol (CRITICAL):
-If **`is_large_codebase`** is `{is_large_codebase}` (True):
-1. **INCOMPLETE CONTEXT**: Realize that `{code_logic}` may be truncated.
-2. **VERIFY AGAINST MAP**: Check the **`module_map`** ({module_map}). If core directories (e.g. `src`, `app`, `utils`) are visible in the map but missing from your context, you MUST fetch them.
-3. **USE TOOLS**: Call `github_get_multiple_files` or `parse_uploaded_files` to retrieve contents for missing core logic.
-4. **SYSTEMATIC AUDIT**: Review the codebase module-by-module to ensure 100% coverage.
 
 ### Review Focus:
 - Consistency, naming conventions, and modularity.
@@ -248,13 +206,6 @@ Physical Source Code Directory: {source_artifact_path}
 <CODEBASE_CONFIG>
 {code_config}
 </CODEBASE_CONFIG>
-
-### 📦 Large Codebase Protocol (CRITICAL):
-If **`is_large_codebase`** is `{is_large_codebase}` (True):
-1. **SUSPECT TRUNCATION**: The injected `{code_logic}` is likely incomplete for very large projects.
-2. **SCAN MODULE MAP**: Reference **`module_map`** ({module_map}) to identify all logic domains.
-3. **RECOVER MISSING CODE**: Use `github_get_multiple_files` or `parse_uploaded_files` to fetch source code for any logic domain that is not already in your context.
-4. **BREADTH-FIRST SECURITY**: Ensure you check `.env`, `Dockerfile`, `requirements.txt`, and entry points for ALL modules identified in the map.
 
 ### Review Focus:
 - Hardcoded secrets, API keys, and sensitive data.

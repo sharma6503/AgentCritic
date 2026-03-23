@@ -13,6 +13,8 @@ from code_reviewer.tools import (
     github_get_file_contents,
     github_list_directory_contents,
     github_get_multiple_files,
+    github_list_multiple_directories,
+    github_get_recursive_tree,
 )
 from ..utils.compat import get_binary_path, SafeMcpToolset
 
@@ -24,6 +26,8 @@ _tools = [
     github_get_file_contents,
     github_list_directory_contents,
     github_get_multiple_files,
+    github_list_multiple_directories,
+    github_get_recursive_tree,
 ]
 
 _uv_path = get_binary_path("uv")
