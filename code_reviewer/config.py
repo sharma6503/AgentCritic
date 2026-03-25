@@ -1,15 +1,14 @@
 """
-Configuration dataclass for the ADK Code Reviewer agent.
+Configuration models for the ADK Code Reviewer agent.
 Centralises all environment-driven settings in a single place,
-following the pattern used in google/adk-samples/customer-service.
+following a robust pattern using Pydantic for validation.
 """
 
 import os
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class AgentSettings:
+class AgentSettings(BaseModel):
     """Model & identity settings for each agent tier.
 
     Latency strategy:
@@ -19,53 +18,52 @@ class AgentSettings:
     """
 
     # Root supervisor — FAST routing only, never generates long output
-    root_model: str = field(
+    root_model: str = Field(
         default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-2.0-flash")
     )
     # Expert reviewer fleet — runs 4× in parallel, speed matters most
-    expert_model: str = field(
+    expert_model: str = Field(
         default_factory=lambda: os.environ.get("EXPERT_MODEL", "gemini-2.0-flash")
     )
     # Synthesis + metrics (parallel) — quality matters for final output
-    synthesis_model: str = field(
+    synthesis_model: str = Field(
         default_factory=lambda: os.environ.get(
             "SYNTHESIS_MODEL", "gemini-2.5-flash"
         )
     )
 
 
-@dataclass
-class Config:
+class Config(BaseModel):
     """Top-level configuration container."""
 
-    agent_settings: AgentSettings = field(default_factory=AgentSettings)
+    agent_settings: AgentSettings = Field(default_factory=AgentSettings)
 
     # GitHub / Bitbucket auth (optional — MCP falls back gracefully)
-    github_token: str | None = field(
+    github_token: str | None = Field(
         default_factory=lambda: os.environ.get("GITHUB_TOKEN")
     )
-    bitbucket_username: str | None = field(
+    bitbucket_username: str | None = Field(
         default_factory=lambda: os.environ.get("BITBUCKET_USERNAME")
     )
-    bitbucket_app_password: str | None = field(
+    bitbucket_app_password: str | None = Field(
         default_factory=lambda: os.environ.get("BITBUCKET_APP_PASSWORD")
     )
 
     # Ingestion limits
-    max_file_size_kb: int = field(
+    max_file_size_kb: int = Field(
         default_factory=lambda: int(os.environ.get("MAX_FILE_SIZE_KB", "500"))
     )
 
     # Rate Limiting & Resilience
-    max_concurrency: int = field(
+    max_concurrency: int = Field(
         default_factory=lambda: int(os.environ.get("MAX_CONCURRENCY", "2"))
     )
-    max_retries: int = field(
+    max_retries: int = Field(
         default_factory=lambda: int(os.environ.get("MAX_RETRIES", "5"))
     )
 
     # Global safety settings
-    safety_config: dict = field(
+    safety_config: dict = Field(
         default_factory=lambda: {
             "safety_settings": [
                 {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
