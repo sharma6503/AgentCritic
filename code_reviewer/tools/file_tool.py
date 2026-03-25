@@ -1,4 +1,5 @@
 import os
+import json
 import zipfile
 import tempfile
 import concurrent.futures
@@ -14,7 +15,31 @@ CODE_EXTENSIONS = {
     ".html", ".css", ".scss", ".sass", ".less",
     ".md", ".txt", ".env.example", ".dockerfile",
     ".tf", ".sh", ".bash", ".zsh",
+    ".ipynb",  # Jupyter Notebooks
 }
+
+
+def _preprocess_ipynb(raw_json: str) -> str:
+    """Extracts code and markdown cells from a Jupyter Notebook JSON string.
+    Strips outputs and metadata to reduce token usage and improve LLM context.
+    Falls back to raw JSON if parsing fails.
+    """
+    try:
+        nb = json.loads(raw_json)
+        cells = nb.get("cells", [])
+        blocks = []
+        for cell in cells:
+            ctype = cell.get("cell_type")
+            source = "".join(cell.get("source", []))
+            if not source.strip():
+                continue
+            if ctype == "code":
+                blocks.append(f"```python\n{source}\n```")
+            elif ctype == "markdown":
+                blocks.append(source)
+        return "\n\n".join(blocks) if blocks else raw_json
+    except Exception:
+        return raw_json  # Fallback to raw if JSON is malformed
 
 MAX_FILE_SIZE_BYTES = 500_000  # 500 KB per file
 MAX_WORKERS = 8
@@ -111,7 +136,7 @@ def parse_uploaded_files(file_paths: list, tool_context: ToolContext = None) -> 
         categories = {"logic": [], "config": [], "docs": [], "other": []}
         for fname in collected_files.keys():
             ext = Path(fname).suffix.lower()
-            if ext in {".py", ".ts", ".js", ".go", ".java"}: categories["logic"].append(fname)
+            if ext in {".py", ".ts", ".js", ".go", ".java", ".ipynb"}: categories["logic"].append(fname)
             elif ext in {".yaml", ".yml", ".toml", ".json", ".env.example"}: categories["config"].append(fname)
             elif ext in {".md", ".txt"}: categories["docs"].append(fname)
             else: categories["other"].append(fname)
@@ -163,8 +188,11 @@ def _gather_paths(root: Path, task_list: list, skipped: list, single_file=False)
 
 def _read_file_safe(path: Path) -> str:
     try:
-        return path.read_text(encoding="utf-8", errors="replace")
-    except:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+        if path.suffix.lower() == ".ipynb":
+            return _preprocess_ipynb(raw)
+        return raw
+    except Exception:
         return ""
 
 
@@ -176,7 +204,10 @@ def _read_zip_member_safe(zip_path: Path, member_name: str) -> str:
                 data = f.read(MAX_FILE_SIZE_BYTES + 1)
                 if len(data) > MAX_FILE_SIZE_BYTES:
                     return "" # Omit if it sneakily exceeded the size somehow
-                return data.decode("utf-8", errors="replace")
+                raw = data.decode("utf-8", errors="replace")
+                if Path(member_name).suffix.lower() == ".ipynb":
+                    return _preprocess_ipynb(raw)
+                return raw
     except Exception:
         return ""
 
