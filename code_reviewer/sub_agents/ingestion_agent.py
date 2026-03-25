@@ -10,6 +10,7 @@ from code_reviewer.config import Config
 from code_reviewer.prompts import INGESTION_PROMPT
 from code_reviewer.tools import (
     parse_uploaded_files,
+    read_artifact_file,
     github_get_file_contents,
     github_list_directory_contents,
     github_get_multiple_files,
@@ -23,6 +24,7 @@ _cfg = Config()
 
 _tools = [
     parse_uploaded_files,
+    read_artifact_file,
     github_get_file_contents,
     github_list_directory_contents,
     github_get_multiple_files,
@@ -86,6 +88,33 @@ else:
 
 
 
+def preprocess_ipynb(content_json: str) -> str:
+    """
+    Extracts code and markdown cells from an .ipynb JSON string.
+    Removes outputs and metadata to optimize for LLM context.
+    """
+    import json
+    try:
+        nb = json.loads(content_json)
+        cells = nb.get("cells", [])
+        output = []
+        for cell in cells:
+            ctype = cell.get("cell_type")
+            source = "".join(cell.get("source", []))
+            if ctype == "code":
+                output.append(f"```python\n{source}\n```")
+            elif ctype == "markdown":
+                output.append(source)
+        return "\n\n".join(output)
+    except Exception:
+        return content_json # Fallback to raw if JSON is malformed
+
+def is_binary_content(content: str) -> bool:
+    """Heuristic to detect binary content in a string."""
+    if not content: return False
+    # Check for null bytes or high concentration of non-printable chars
+    return '\x00' in content or (len([c for c in content[:512] if ord(c) > 127]) / min(len(content), 512) > 0.3)
+
 def split_codebase_callback(callback_context: CallbackContext):
     """
     Performance Optimization: Splits raw_codebase into domain-specific keys
@@ -115,7 +144,7 @@ def split_codebase_callback(callback_context: CallbackContext):
             if not getattr(msg, "parts", None): continue
             for part in msg.parts:
                 part_name = getattr(getattr(part, "function_response", None), "name", "")
-                if part_name == "parse_uploaded_files":
+                if part_name in ("parse_uploaded_files", "read_artifact_file"):
                     try:
                         resp = part.function_response.response
                         if isinstance(resp, dict):
@@ -158,9 +187,20 @@ def split_codebase_callback(callback_context: CallbackContext):
                 content_buf.append(lines[i])
                 i += 1
             
-            file_block = f"\n--- {fname} ---\n" + "\n".join(content_buf)
+            content_str = "\n".join(content_buf)
             
-            if ext in {".py", ".ts", ".js", ".go", ".java"}: 
+            # Skip binary files that might have been accidentally ingested
+            if is_binary_content(content_str):
+                logger.warning(f"Ingestion: Skipping binary file {fname}")
+                continue
+
+            # Pre-process IPYNB files for better LLM context
+            if ext == ".ipynb":
+                content_str = preprocess_ipynb(content_str)
+            
+            file_block = f"\n--- {fname} ---\n" + content_str
+            
+            if ext in {".py", ".ts", ".js", ".go", ".java", ".ipynb"}: 
                 logic_files[fname] = file_block
             elif ext in {".yaml", ".yml", ".toml", ".json", ".env.example"}: 
                 config_parts.append(file_block)

@@ -51,12 +51,22 @@ Reply with this overview:
 INGESTION_PROMPT = """You are the Ingestion Agent. Your task is to fetch the codebase from the `user_request` and provide it to the expert fleet.
 
 ### Decision Engine:
-1. **Scenario: Local/ZIP Upload**
-   - If `user_request` contains a temporary path (e.g., `/tmp/`, `AppData/Local/Temp`), use **Workflow A**.
-2. **Scenario: Remote URL (GitHub/Bitbucket)**
+1. **Scenario: ADK Web UI Upload (Artifact)**
+   - If the user uploaded a file directly via the chat interface (attached file icon), the file is stored as an ADK session artifact. Use **Workflow A1**.
+2. **Scenario: Local/ZIP Upload (Disk Path)**
+   - If `user_request` contains a temporary file path (e.g., `/tmp/`, `AppData/Local/Temp`), use **Workflow A2**.
+3. **Scenario: Remote URL (GitHub/Bitbucket)**
    - If `user_request` contains a URL, use **Workflow B**.
 
-### Workflow A: Uploaded Files (Local/ZIP)
+### Workflow A1: ADK Web UI Uploads (Attached Files)
+Use this when the user has uploaded a file directly in the chat (NOT via a path in the message).
+1. **Extract filename:** Get the filename from the message context (e.g., "Text_Summarization.ipynb").
+2. **Call** `read_artifact_file(filename="<filename>")` to load it from the session artifact store.
+3. **Output** the `codebase` key from the tool response **verbatim**.
+4. **If it fails:** Try `read_artifact_file` again. If it still fails, ask the user to upload the file as a ZIP instead.
+
+### Workflow A2: Local/ZIP Path Uploads
+Use this when `user_request` contains an explicit file or ZIP path.
 1. **Call** `parse_uploaded_files(file_paths=["<path>"])`. **CRITICAL: Path must be in a list.**
 2. **Selective Review:** If `user_request` specifies files/dirs (e.g. "only review `main.py`"), still call `parse_uploaded_files` on the ZIP, but ONLY output the contents of the requested files.
 3. **Output** the `codebase` key or specific file contents **verbatim**.
@@ -68,7 +78,7 @@ INGESTION_PROMPT = """You are the Ingestion Agent. Your task is to fetch the cod
    - If specific paths are mentioned, prioritize those. 
    - **Recursive Directory Scan:** If a directory is requested, use `github_get_recursive_tree(path="<path>")` to identify files.
    - **Filter & Batch (CRITICAL):** 
-     - Filter for core files: .py, .ts, .js, .go, .java, .md, .txt. Ignore binary/media files!
+     - Filter for core files: .py, .ts, .js, .go, .java, .ipynb, .md, .txt. Ignore binary/media files!
      - **BATCH SIZE:** If more than 30 files are found, fetch them in batches of 30. Use multiple parallel `github_get_multiple_files` calls in one turn OR multiple turns if needed.
      - Never pass more than 30 paths to a single `github_get_multiple_files` call.
    - **Persistence:** Ensure at least the core logic files and READMEs are fetched.
@@ -85,7 +95,7 @@ INGESTION_PROMPT = """You are the Ingestion Agent. Your task is to fetch the cod
 1. **Analyze Initial Fetch:** After calling tools, review the list of files obtained.
 2. **Identify Gaps:** Compare the fetch list with the directory structure. Did you miss a core logic file? Is a file path incorrect?
 3. **Retry Locally/Remotely:** If items are missing or if a tool returned an "Error", use your next turn to FETCH THE MISSING ITEMS.
-4. **Persistence:** Do NOT finish until all core logic files (extensions: .py, .ts, .js, .go, .java) mentioned in the root/src are in your context.
+4. **Persistence:** Do NOT finish until all core logic files (extensions: .py, .ts, .js, .go, .java, .ipynb) mentioned in the root/src are in your context.
 5. **Goal:** Complete ingestion in 2-3 turns max, with 100% coverage of core files.
 
 ### Output Requirements:
@@ -124,11 +134,12 @@ Physical Source Code Directory: {source_artifact_path}
 {code_config}
 </CODEBASE_CONFIG>
 
-### 🏗️ Architecture Validation Skill — Apply Proactively:
-For every architectural finding, leverage your skill to audit the structural health of the codebase:
-1. **Structural Audit**: Evaluate if the code is modular and layered correctly.
-2. **ADK 2.0 Compliance**: Look for state management patterns (output_key), proper agent instantiation, and explicit tool encapsulation.
-3. **Best Practices Checklist**: Refer to your `architecture-validation` resources for detailed ADK 2.0 guidance.
+### 🏗️ Architecture Validation Skill (Pipeline Pattern) — Apply Proactively:
+For every architectural finding, leverage your skill to audit the structural health of the codebase using the **Pipeline Pattern**:
+1. **Phase 1: Dependency Mapping**: Analyze the import structure and identify circular dependencies.
+2. **Phase 2: Design Pattern Audit**: Compare the implementation against ADK 2.0 best practices.
+3. **Phase 3: Resource Usage Check**: Evaluate efficiency (memory, connections).
+4. **Best Practices Checklist**: Refer to your `architecture-validation` resources for detailed ADK 2.0 guidance.
 
 ### Review Focus:
 1. **ADK Patterns**: `Agent` instantiation, `SequentialAgent`/`ParallelAgent` usage, `output_key` state management, MCP tool safety.
@@ -207,11 +218,11 @@ If **`is_large_codebase`** is `{is_large_codebase}` (True):
 - Type hinting and documentation.
 - **Display:** Wrap all code snippets in markdown code fences (```python).
 
-### 🛠️ Bug-Fixing Skill — Apply For Every Finding:
-For each quality issue found, follow the Fix-It Loop:
-1. **Diagnose**: Explain WHY the current code is suboptimal (deep nesting, missing types, poor naming, etc.).
-2. **Transform**: Provide a concrete **Before/After** code block showing the refactored version.
-3. **Validate**: State in one sentence WHY the new version is better (readability, reliability, or performance).
+### 🛠️ Bug-Fixing Skill (Generator Pattern) — Apply For Every Finding:
+For each quality issue found, follow the **Generator Pattern** and its strict **FIX TEMPLATE**:
+1. **Diagnosis**: Finding title and Root Cause explanation.
+2. **Implementation**: Provide a concrete **Before/After** code block or diff showing the refactor.
+3. **Validation**: State the Expected Outcome and any Caveats.
 
 Refactoring patterns to apply: Extract Method, Replace Temp with Query, Introduce Parameter Object, Guard Clauses.
 
@@ -263,11 +274,13 @@ If **`is_large_codebase`** is `{is_large_codebase}` (True):
 - Production readiness (Docker, Cloud Run configs).
 - **Display:** Wrap all code snippets in markdown code fences (```bash or ```python).
 
-### 🛡️ Security Hardening Skill — Apply For Every Vulnerability:
-For each security issue found, follow the 3-layer Hardening Protocol:
-1. **Threat Analysis**: State the potential impact. (e.g., "Hardcoded API key leads to unauthorized access, account takeover, and data exfiltration.")
-2. **Mitigation Strategy**: Provide the industry-standard fix with a concrete code example (e.g., use `os.environ`, parameterized queries, `secrets.token_urlsafe()`).
-3. **Defense in Depth**: Suggest 1-2 additional protective layers (e.g., key rotation, WAF rules, least-privilege IAM, secret scanner in CI/CD).
+### 🛡️ Security Hardening Skill (Reviewer Pattern) — Apply For Every Vulnerability:
+For each security issue found, apply the **Reviewer Pattern** using modular rubrics:
+1. **Secret Leakage Rubric**: Check for hardcoded secrets (Severity: P0).
+2. **Injection Risk Rubric**: Check for SQL/OS/HTML injection (Severity: P0).
+3. **Dependency Security Rubric**: Check for vulnerable package versions (Severity: P1).
+
+For every finding, provide a **Threat Analysis**, a **Mitigation Strategy** (code snippet), and a **Defense in Depth** recommendation.
 
 ### Output Format:
 ## 🔒 Security & Deployment Review
@@ -407,7 +420,7 @@ A high-level verdict (2-3 sentences) highlighting the most critical issues and t
 | 3 | Important fix 3 | 🟡 | `file:L#` |
 
 ---
-_Report generated by Agent Critic_
+_Report generated by Agent Doctor_
 """
 # ---------------------------------------------------------------------------
 # Critique & Revision (Advanced Patterns)
