@@ -19,7 +19,7 @@ class AgentSettings(BaseModel):
 
     # Root supervisor — FAST routing only, never generates long output
     root_model: str = Field(
-        default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-2.0-flash")
+        default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-2.5-flash")
     )
     # Expert reviewer fleet — runs 4× in parallel, speed matters most
     expert_model: str = Field(
@@ -66,10 +66,10 @@ class Config(BaseModel):
     safety_config: dict = Field(
         default_factory=lambda: {
             "safety_settings": [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_LOW_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_LOW_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_LOW_AND_ABOVE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_LOW_AND_ABOVE"},
             ]
         }
     )
