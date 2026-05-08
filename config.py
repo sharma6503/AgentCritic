@@ -1,2 +1,4 @@
-# Configuration for model selection
-SYNTHESIS_MODEL = "gemini-2.0-flash"
+safety_settings = {
+    "category": "HARM_CATEGORY_HARASSMENT",
+    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+}
