@@ -1,4 +1,3 @@
-from adk.runner import Runner
-from armor_shield.protector import ArmorShield
-# ...
-runner = Runner(app=app, agent=root_agent, plugins=[ArmorShield()])
+import os
+# Session configuration
+session_service = DatabaseSessionService(db_url=os.environ.get("DB_URL"))
