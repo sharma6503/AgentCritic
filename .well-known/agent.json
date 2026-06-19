@@ -1,0 +1,7 @@
+{
+  "name": "Code Reviewer Fleet",
+  "description": "Automated code review agent",
+  "version": "1.0.0",
+  "capabilities": ["static_analysis", "security_audit"],
+  "provider": "Internal"
+}
