@@ -1,0 +1,8 @@
+actions:
+  - name: fetch_repo_contents
+    description: Reads code from GitHub/ZIP
+    system_touched: GitHub_API
+    data_touched: source_code
+    reversibility: n/a
+    tool_sensitivity: TS-1
+    required_controls: [external_api_allowlist]
