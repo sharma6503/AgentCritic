@@ -107,8 +107,9 @@ adk_expert = Agent(
     description="Expert in Google ADK architecture patterns and Gemini model lifecycle.",
     instruction=ADK_EXPERT_PROMPT,
     tools=_tools,
-    planner=PlanReActPlanner(),
+    planner=PlanReActPlanner(max_steps=10),
     output_key="adk_review_result",
+    after_model_callback=output_guardrail
     after_agent_callback=adk_expert_callback,
     generate_content_config=_cfg.safety_config,
 )
