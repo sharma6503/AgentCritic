@@ -51,7 +51,11 @@ def search_adk_docs(query: str) -> dict:
             break
 
     try:
-        response = requests.get(url, timeout=15)
+        APPROVED_DOMAINS = ["google.github.io", "api.github.com"]
+domain = urlparse(url).netloc
+if domain not in APPROVED_DOMAINS:
+    raise PermissionError(f"Domain {domain} not in allowlist.")
+response = requests.get(url, timeout=15)
         response.raise_for_status()
         content = response.text
 
