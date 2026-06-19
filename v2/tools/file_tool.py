@@ -164,7 +164,8 @@ def _gather_paths(root: Path, task_list: list, skipped: list, single_file=False)
 def _read_file_safe(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8", errors="replace")
-    except:
+    except Exception as e:
+        logger.error(f"Failed to read {path}: {e}", exc_info=True)
         return ""
 
 
