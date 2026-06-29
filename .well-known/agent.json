@@ -1,7 +1,14 @@
 {
-  "name": "Code Reviewer Fleet",
-  "description": "Automated code review agent",
+  "name": "adk-code-reviewer",
+  "description": "Professional code quality and security intelligence system.",
   "version": "1.0.0",
-  "capabilities": ["static_analysis", "security_audit"],
-  "provider": "Internal"
+  "url": "https://agent.ingrammicro.com",
+  "provider": "Ingram Micro",
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
+  "skills": ["code-audit", "security-hardening"]
 }
