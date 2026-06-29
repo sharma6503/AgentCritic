@@ -1,3 +1,9 @@
 # Threat Model
-- Prompt Injection: Mitigated by input guardrails.
-- PII Leakage: Mitigated by output redaction.
+
+## Assets
+- Source Code
+- ADK Artifacts
+
+## Threats
+- Path Traversal
+- PII Leakage
