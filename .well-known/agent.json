@@ -1,6 +1,8 @@
 {
-  "provider": "AgentCritic",
-  "capabilities": ["code_review", "security_audit"],
-  "skills": ["adk_architecture", "code_quality", "security_hardening"],
-  "defaultInputModes": ["text", "file"]
+  "name": "agent-critic",
+  "description": "AI Code Review Expert",
+  "version": "1.0.0",
+  "provider": "Ingram Micro",
+  "capabilities": { "streaming": false, "pushNotifications": false },
+  "authentication": { "type": "apiKey" }
 }
