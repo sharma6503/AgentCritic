@@ -1,3 +1,6 @@
 actions:
-  - name: code_review
-    description: Performs a full security and quality audit of a codebase.
+  - name: read_artifact_file
+    description: Reads user-uploaded code artifacts
+    tool_sensitivity: TS-2
+    system_touched: ADK Session Storage
+    reversibility: Reversible
