@@ -1,14 +1,6 @@
 {
-  "name": "adk-code-reviewer",
-  "description": "Professional code quality and security intelligence system.",
-  "version": "1.0.0",
-  "url": "https://agent.ingrammicro.com",
-  "provider": "Ingram Micro",
-  "defaultInputModes": ["text"],
-  "defaultOutputModes": ["text"],
-  "capabilities": {
-    "streaming": true,
-    "pushNotifications": false
-  },
-  "skills": ["code-audit", "security-hardening"]
+  "provider": "AgentCritic",
+  "capabilities": ["code_review", "security_audit"],
+  "skills": ["adk_architecture", "code_quality", "security_hardening"],
+  "defaultInputModes": ["text", "file"]
 }
