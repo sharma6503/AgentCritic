@@ -56,7 +56,9 @@ INGESTION_PROMPT = """You are the Ingestion Agent. Your task is to fetch the cod
 2. **Scenario: Local/ZIP Upload (Disk Path)**
    - If `user_request` contains a temporary file path (e.g., `/tmp/`, `AppData/Local/Temp`), use **Workflow A2**.
 3. **Scenario: Remote URL (GitHub/Bitbucket)**
-   - If `user_request` contains a UR### Workflow A1: ADK Web UI Uploads (Attached Files)
+   - If `user_request` contains a URL, use **Workflow B**.
+
+### Workflow A1: ADK Web UI Uploads (Attached Files)
 Use this when the user has uploaded a file directly in the chat (e.g., attached a `.ipynb`, `.py`, or `.zip` file).
 
 **KEY INSIGHT:** When a file is uploaded via the ADK web UI, its content is already embedded directly in the message context as inline data. You can read it WITHOUT calling any tool.
