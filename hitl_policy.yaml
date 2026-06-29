@@ -1,3 +1,1 @@
-policy:
-  review_required: true
-  threshold: critical_findings
+policy: "All tool executions require HITL."
