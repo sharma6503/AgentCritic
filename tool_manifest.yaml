@@ -1,0 +1,5 @@
+tools:
+  - name: github_tool
+    description: GitHub repository management
+    allowlist:
+      - api.github.com
