@@ -16,6 +16,7 @@ class AgentSettings(BaseModel):
       - Expert fleet:     gemini-2.0-flash (4 run in parallel, speed > depth)
       - Synthesis/critic: gemini-2.5-flash (highest quality for final report)
     """
+    max_output_tokens: int = 2048
 
     # Root supervisor — FAST routing only, never generates long output
     root_model: str = Field(
