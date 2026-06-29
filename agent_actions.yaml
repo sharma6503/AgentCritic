@@ -1,7 +1,3 @@
 actions:
   - name: code_review
     description: Performs a full security and quality audit of a codebase.
-    parameters:
-      - name: user_request
-        type: string
-        description: The user's request containing code or a repository URL.
