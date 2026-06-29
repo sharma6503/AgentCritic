@@ -1,8 +1,7 @@
 actions:
-  - name: fetch_repo_contents
-    description: Reads code from GitHub/ZIP
-    system_touched: GitHub_API
-    data_touched: source_code
-    reversibility: n/a
-    tool_sensitivity: TS-1
-    required_controls: [external_api_allowlist]
+  - name: code_review
+    description: Performs a full security and quality audit of a codebase.
+    parameters:
+      - name: user_request
+        type: string
+        description: The user's request containing code or a repository URL.
