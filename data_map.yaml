@@ -1,4 +1,1 @@
-data_flows:
-  - source: user_request
-    destination: ingestion_agent
-    type: codebase_reference
+data_categories: []
