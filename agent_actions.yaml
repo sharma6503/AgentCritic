@@ -1,6 +1,0 @@
-actions:
-  - name: read_artifact_file
-    description: Reads user-uploaded code artifacts
-    tool_sensitivity: TS-2
-    system_touched: ADK Session Storage
-    reversibility: Reversible
