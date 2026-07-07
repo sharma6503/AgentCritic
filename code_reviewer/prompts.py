@@ -122,7 +122,7 @@ You MUST output the final collected data in this exact format. If using `parse_u
 ```
 
 **CRITICAL:** Do NOT summarize code. Output it verbatim for the experts.
-"""
+"""""
 
 # ---------------------------------------------------------------------------
 # ADK Architecture Expert
