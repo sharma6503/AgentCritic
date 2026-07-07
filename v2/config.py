@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 
 @dataclass
 class AgentSettings:
-    root_model: str = field(default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-2.0-flash"))
-    expert_model: str = field(default_factory=lambda: os.environ.get("EXPERT_MODEL", "gemini-2.0-flash"))
-    synthesis_model: str = field(default_factory=lambda: os.environ.get("SYNTHESIS_MODEL", "gemini-2.5-flash"))
+    root_model: str = field(default_factory=lambda: os.environ.get("ROOT_MODEL", "gemini-3-flash-preview"))
+    expert_model: str = field(default_factory=lambda: os.environ.get("EXPERT_MODEL", "gemini-3-flash-preview"))
+    synthesis_model: str = field(default_factory=lambda: os.environ.get("SYNTHESIS_MODEL", "gemini-3-flash-preview"))
 
 @dataclass
 class Config:
