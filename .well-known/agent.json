@@ -1,13 +1,8 @@
 {
-  "name": "adk-code-reviewer",
+  "schemaVersion": "1.0",
+  "name": "ADK Code Reviewer",
   "description": "Automated code quality and security auditor.",
-  "version": "1.0.0",
-  "provider": "Ingram Micro",
-  "defaultInputModes": ["text"],
-  "defaultOutputModes": ["text"],
-  "capabilities": {
-    "streaming": false,
-    "pushNotifications": false
-  },
-  "skills": ["code-review", "security-audit"]
+  "provider": "Internal",
+  "capabilities": ["code_review", "security_audit"],
+  "contactEmail": "admin@example.com"
 }
