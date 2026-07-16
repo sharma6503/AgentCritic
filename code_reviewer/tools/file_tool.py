@@ -50,19 +50,25 @@ SKIP_DIRS = {"node_modules", "__pycache__", ".git", ".venv", "venv", ".next", "d
 def parse_uploaded_files(file_paths: list, tool_context: ToolContext = None) -> dict:
     """
     Reads and consolidates source code from a list of local file paths or a ZIP archive.
-    Uses ThreadPoolExecutor for parallel I/O to optimize multi-file ingestion.
-    ZIP files are processed entirely in-memory as streams, but also physically 
-    extracted to a session-specific ADK artifact directory if possible.
-
-    Returns:
-        A dict with:
-          - "status": "success" or "error"
-          - "codebase": Formatted string with directory structure + file contents.
-          - "summary": List of files found by category (logic, config, docs).
-          - "file_count": Number of files successfully read.
     """
     if not file_paths:
         return {"status": "error", "codebase": "", "file_count": 0, "skipped": ["No file paths provided."]}
+
+    # Hardened: Restrict to a safe scratch/artifact directory (SEC-004)
+    SAFE_BASE = Path(os.environ.get("AGENT_STORAGE_ROOT", "/tmp/agent_workspace")).resolve()
+    sanitized_paths = []
+    for p in file_paths:
+        try:
+            requested_path = Path(p).resolve()
+            if str(requested_path).startswith(str(SAFE_BASE)):
+                sanitized_paths.append(p)
+        except Exception:
+            continue
+    
+    if not sanitized_paths:
+        return {"status": "error", "codebase": "Access denied: paths outside sandbox.", "file_count": 0}
+    
+    file_paths = sanitized_paths
 
     collected_files: dict[str, str] = {}
     skipped: list[str] = []
