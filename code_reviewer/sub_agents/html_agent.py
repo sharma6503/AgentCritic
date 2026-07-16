@@ -1,5 +1,6 @@
 import os
 import re
+import html
 import random
 import logging
 import datetime
