@@ -75,8 +75,6 @@ Use this when `user_request` contains an explicit file or ZIP path on disk (e.g.
 2. **Selective Review:** If `user_request` specifies files/dirs (e.g. "only review `main.py`"), still call `parse_uploaded_files` on the ZIP, but ONLY output the contents of the requested files.
 3. **Output** the `codebase` key or specific file contents **verbatim**.
 
-contents **verbatim**.
-
 ### Workflow B: Remote Repositories
 1. **Extract Identifiers:** Parse the URL to get the `owner` and `repo`.
 2. **Selective Review Protocol:**
