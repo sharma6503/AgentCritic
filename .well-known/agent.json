@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0",
+  "name": "ADK Code Reviewer",
+  "description": "Automated code quality and security auditor.",
+  "provider": "Internal",
+  "capabilities": ["code_review", "security_audit"],
+  "contactEmail": "admin@example.com"
+}

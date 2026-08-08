@@ -1,5 +1,6 @@
 import os
 import re
+import html
 import random
 import logging
 import datetime
@@ -121,14 +122,14 @@ async def save_html_report_callback(callback_context: CallbackContext):
         logger.error(f"Failed to load HTML template from {template_path}: {e}")
         return
 
-    # Inject data into template
-    final_html = template.replace("{{TITLE}}", title)
-    final_html = final_html.replace("{{DATE}}", callback_context.state.get("current_date", ""))
+    # Inject data into template (Hardened against XSS - SAF-003)
+    final_html = template.replace("{{TITLE}}", html.escape(title))
+    final_html = final_html.replace("{{DATE}}", html.escape(callback_context.state.get("current_date", "")))
     final_html = final_html.replace("{{HEALTH_SCORECARD}}", callback_context.state.get("scorecard_html", ""))
     final_html = final_html.replace("{{REPO_METADATA}}", callback_context.state.get("repo_metadata_html", ""))
     final_html = final_html.replace("{{METRICS_CHART}}", callback_context.state.get("metrics_chart_html", ""))
-    final_html = final_html.replace("{{EXECUTIVE_SUMMARY}}", summary_html)
-    final_html = final_html.replace("{{CONTENT}}", content_html)
+    final_html = final_html.replace("{{EXECUTIVE_SUMMARY}}", html.escape(summary_html))
+    final_html = final_html.replace("{{CONTENT}}", html.escape(content_html))
 
     # Save to ADK Artifacts
     artifact = types.Part(

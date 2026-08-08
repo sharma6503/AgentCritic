@@ -58,3 +58,21 @@ def pre_review_reset_callback(callback_context: CallbackContext):
         callback_context.state["_previous_user_request"] = current_request
     else:
         logger.debug("Same request; skipping reset.")
+
+async def input_guardrail(callback_context: CallbackContext):
+    """Mandatory prompt injection defense."""
+    user_input = callback_context.state.get("user_request", "")
+    # Simple pattern-based injection defense
+    injection_patterns = ["ignore previous instructions", "system prompt", "you are now"]
+    if any(pattern in user_input.lower() for pattern in injection_patterns):
+        logger.warning("Potential prompt injection detected.")
+        callback_context.state["user_request"] = "[REDACTED POTENTIAL INJECTION]"
+
+async def output_guardrail(callback_context: CallbackContext):
+    """Mandatory identity leakage protection."""
+    response = callback_context.state.get("llm_response", "")
+    identity_patterns = ["I am an AI", "large language model", "as an AI"]
+    for pattern in identity_patterns:
+        if pattern.lower() in response.lower():
+            logger.warning("Identity leakage detected in response.")
+            callback_context.state["llm_response"] = response.replace(pattern, "[AI Assistant]")
